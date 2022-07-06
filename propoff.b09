@@ -1,0 +1,3 @@
+PROCEDURE propoff
+RUN gfx2("PROPSW","off")
+END 

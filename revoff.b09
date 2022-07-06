@@ -1,0 +1,3 @@
+PROCEDURE revoff
+RUN gfx2("BOLDSW","off")
+RUN gfx2("REVOFF")
