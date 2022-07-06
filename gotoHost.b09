@@ -1,12 +1,13 @@
 PROCEDURE gotoHost
-(* 10/08/21
-TYPE bookmarks=server,page,title:STRING[80]
-DIM hostname,lineout(4):STRING[80]
+(* 06/06/22
+TYPE bookmarks=server,page,title:STRING[160]
+PARAM bookmark:bookmarks
+DIM hostname,lineout(4):STRING[160]
 DIM crlf:STRING[2]
 DIM hostaddr(4):INTEGER
 DIM int1,fn1,fn2,waddr,wbase,wend,wmask,wsize,wptr:INTEGER
 DIM debug:BOOLEAN
-PARAM bookmark:bookmarks
+
 (* FIXME replace fixed 2K buffer size
 wbase:=$4000 \wmask:=$07FF \wend:=wbase+wmask
 

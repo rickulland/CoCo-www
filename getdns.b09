@@ -1,13 +1,13 @@
 PROCEDURE getdns
-(* www util - get host address 10/08/21 
+(* www util - get host address 6/20/22 
 (* reads file  /SYS/hosts, formatted as:
 (*
 (* 192.168.1.7  rickslaptop.org
 (* 192.168.0.7  anotherhost.com
 
 DIM cnt,path:INTEGER
-DIM instr:STRING[80]
-PARAM hostname:STRING[80]
+DIM instr:STRING[160]
+PARAM hostname:STRING[160]
 PARAM hostaddr(4):INTEGER
 
 OPEN #path,"/DD/SYS/hosts":READ

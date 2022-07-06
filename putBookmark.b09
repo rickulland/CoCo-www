@@ -1,6 +1,6 @@
 PROCEDURE putBookmark
-     (* 10/22/21
-     TYPE bookmarks=server,page,title:STRING[80]
+     (* 06/06/22
+     TYPE bookmarks=server,page,title:STRING[160]
      DIM path:BYTE
      DIM int1,reclen:INTEGER
      DIM instr:STRING[1]
