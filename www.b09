@@ -1,5 +1,5 @@
 PROCEDURE www
-     (* Worst Web Wrangler 1/10/22 copyback 1/10/22
+     (* Worst Web Wrangler 1/10/22 copyback 1/10/22 
      (* Socket 0 only using 2k size TX & RX buffer
      (* Requires 'wwwutils.b09' including:
      (* getdns, initeth, stateth, gotoHost, drawTable
