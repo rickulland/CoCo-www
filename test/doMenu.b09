@@ -1,0 +1,187 @@
+PROCEDURE doMenu
+(* 7/14/22 - returns a command number to calling program
+PARAM hasmouse:BOOLEAN
+PARAM menucall:INTEGER
+TYPE registers=cc,a,b,dp:BYTE; x,y,u:INTEGER
+DIM regs:registers
+DIM fn1,fn2,int1,menu_id,menu_item:INTEGER
+DIM hotkey,instr:STRING[1]
+
+IF hasmouse=FALSE THEN 
+  scrnf:=scrnx \(* assuming plain font FIXME 
+  (* set palettes 0-3 for greyscale
+  RUN gfx2("palette",0,0) \RUN gfx2("palette",1,7)
+  RUN gfx2("palette",2,56) \RUN gfx2("palette",3,63)
+  RUN gfx2("curxy",0,23)
+  RUN gfx2("revon")
+  PRINT "<B>ookmark   <G>oto page   <R>eload   <Enter>next    <L>ink   <Q>uit    "; 
+  RUN gfx2("revoff")
+  LOOP 
+    instr:=""
+    WHILE instr="" DO 
+      RUN bnkey(instr)
+    ENDWHILE 
+    IF instr<>"" THEN 
+      IF instr="b" OR instr="B" THEN 
+        menucall:=6 \ END  \(* set bookmark 
+      ELSE 
+        IF instr="g" OR instr="G" THEN 
+          menucall:=7 \ END  \(* goto bookmark
+        ELSE 
+          IF instr="r" OR instr="R" THEN 
+            menucall:=11 \ END  \(* reload page
+          ELSE 
+            IF ASC(instr)=13 THEN 
+              menucall:=3 \ END  \(* next page
+            ELSE 
+              IF instr="l" OR instr="L" THEN 
+                menucall:=9 \ END  \(* links menu
+              ELSE 
+                IF instr="q" OR instr="Q" THEN 
+                  menucall:=1 \ END  \(* quit
+                ENDIF 
+              ENDIF 
+            ENDIF 
+          ENDIF 
+        ENDIF 
+      ENDIF 
+    ENDIF 
+  ENDLOOP 
+ENDIF 
+
+IF hasmouse=TRUE THEN 
+  DIM valid,fire,msx,msy,area:INTEGER
+  DIM wd(3),m1(4),m2(5):STRING
+  DIM enable,disable,c:INTEGER
+  enable=1 \disable=0
+  DIM MId_Book,MId_Page:INTEGER
+  MId_Book=33 \MId_Page=34
+  DIM stdmenus(32):STRING[16]
+  DIM response:STRING[2]
+  DIM LpExitFlg:BOOLEAN
+  (* set palettes 0-3 for greyscale
+  RUN gfx2("palette",0,0) \RUN gfx2("palette",1,7)
+  RUN gfx2("palette",2,56) \RUN gfx2("palette",3,63)
+  RUN gfx2("gcset",$CA,1)
+  RUN gfx2("setmouse",3,255,1)
+  RUN gfx2("title",wd,"www",40,10,2)
+  
+  RUN gfx2("menu",wd,1,"Bookmark",MId_Book,10,4,m1,enable)
+  RUN gfx2("item",m1,1,"<B>M this",enable)
+  RUN gfx2("item",m1,2,"<G>oto BM",enable)
+  RUN gfx2("item",m1,3,"<M>anage BM",disable)
+  RUN gfx2("item",m1,4,"<L>inks",enable)
+  
+  RUN gfx2("menu",wd,2,"Page",MId_Page,10,5,m2,enable)
+  RUN gfx2("item",m2,1,"<C>lear",enable)
+  RUN gfx2("item",m2,2,"<R>eload",enable)
+  RUN gfx2("item",m2,3,"<N>ew tab",disable)
+  RUN gfx2("item",m2,4,"<P>rint",disable)
+  RUN gfx2("item",m2,5,"<S>ave",disable)
+  
+  (* change colors to make menu readable before calling WNSET
+  RUN gfx2("color",2,0,2) \RUN gfx2("font",$C8,1)
+  RUN gfx2("wnset",2,wd) \RUN gfx2("curoff")
+  RUN gfx2("color",0,2) \RUN gfx2("clear") \RUN gfx2("font",$C8,$32)
+  LpExitFlg=FALSE
+ENDIF  
+
+RUN gfx2("gcset",$CA,1)
+LOOP 
+LOOP 
+  RUN gfx2("onmouse",0)
+  RUN gfx2("mouse",valid,fire,msx,msy,area,fullx,fully)
+  IF valid=1 THEN 
+    (* Check for keypress before mouse
+    regs.a:=0 \regs.b:=1 \hotkey:=""
+    RUN byscall($8D,regs)
+    IF LAND(regs.cc,1)=0 THEN 
+      RUN bnkey(hotkey)
+      IF hotkey<>"" AND ASC(hotkey)>128 THEN 
+        hotkey=CHR$(ASC(hotkey)-128)
+        menu_id:=0 \menu_item:=0
+        menu_item:=SUBSTR(hotkey,"bgml")
+        IF menu_item>0 THEN 
+          menu_id=33
+          LpExitFlg:=TRUE
+        ELSE 
+          menu_item:=SUBSTR(hotkey,"crnps")
+          IF menu_item>0 THEN 
+            menu_id=34
+            LpExitFlg:=TRUE
+          ENDIF 
+        ENDIF 
+      ENDIF 
+    ENDIF 
+    IF fire=1 AND area=1 THEN 
+      RUN gfx2("getsel",menu_id,menu_item)
+      IF menu_id<>0 THEN 
+        LpExitFlg=TRUE
+      ENDIF 
+    ENDIF 
+  ENDIF 
+EXITIF LpExitFlg=TRUE THEN 
+ENDEXIT 
+ENDLOOP 
+
+IF menu_id=33 OR hotkey<>"" THEN 
+  IF menu_item=1THEN 
+    menucall:=6 \ END  \(* bookmark page
+  ELSE 
+    IF menu_item=2 THEN 
+      menucall:=7 \ END  \(* goto bookmark 
+    ELSE 
+      IF menu_item=3 OR hotkey="m" THEN 
+        menucall:=8 \ END  \(* Manage bookmarks
+      ELSE 
+        IF menu_item=4 OR hotkey="l" THEN 
+          menucall:=9 \ END  \(* links menu
+        ENDIF 
+      ENDIF 
+    ENDIF 
+  ENDIF 
+ENDIF 
+
+IF menu_id=34 OR hotkey<>"" THEN 
+  IF menu_item=1 THEN 
+    menucall:=10 \ END  \(* clear form
+  ELSE 
+    IF menu_item=2 THEN 
+      menucall:=11 \ END  \(* reload page
+    ELSE 
+      IF menu_item=3 THEN 
+        menucall:=12 \ END  \(* New tab
+      ELSE 
+        IF menu_item=4 THEN 
+          menucall:=13 \ END  \(* Print page 
+        ELSE 
+          IF menu_item=5 THEN 
+            menucall:=14 \ END  \(* Save page
+          ENDIF 
+        ENDIF 
+      ENDIF 
+    ENDIF 
+  ENDIF 
+ENDIF   
+
+(* System menus ________________________________________ 
+IF menu_id=2 OR hotkey="q" THEN 
+  menucall:=1 \ END  \(* End run 
+ELSE 
+  IF menu_id=4 THEN 
+    menucall:=2 \ END  \(* Scroll Up
+  ELSE 
+    IF menu_id=5 OR hotkey=CHR$(13) THEN 
+      menucall:=3 \ END  \(* Scroll Down
+    ELSE 
+      IF menu_id=6 THEN 
+        menucall:=4 \ END  \(* Scroll Right
+      ELSE 
+        IF menu_id=7 THEN 
+          menucall:=5 \ END  \(* Scroll Left
+        ENDIF 
+      ENDIF 
+    ENDIF 
+  ENDIF 
+ENDIF 
+ENDLOOP

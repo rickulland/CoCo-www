@@ -1,0 +1,19 @@
+PROCEDURE testMenu
+DIM hasmouse:BOOLEAN
+DIM menucall:INTEGER
+DIM instr:STRING
+hasmouse:=TRUE
+RUN gfx2("dwend") \RUN gfx2("dwset",7,0,0,80,25,0,3,0)
+(* set palettes 0-3 for greyscale
+RUN gfx2("palette",0,0) \RUN gfx2("palette",1,7)
+RUN gfx2("palette",2,56) \RUN gfx2("palette",3,63)
+     
+LOOP 
+  instr:=""
+  PRINT "type something"
+  WHILE instr="" DO 
+    RUN bnkey(instr)
+  ENDWHILE 
+  RUN doMenu(hasmouse,menucall)
+  PRINT "response "; menucall
+ENDLOOP 
