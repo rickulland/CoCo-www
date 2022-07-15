@@ -1,10 +1,8 @@
-Here is a demo based on LCB and CRT's video at the last CoCoFest, plus additional work Curtis has done since then to enable hotkeys. If you have not seen the video, do that first!
+Here is a demo based on <a href="https://youtu.be/FJm2G_n1Gx0"> L Curtis Boyle and Canadian RetroThings video </a> presented at the last CoCoFest, plus additional work Curtis has done since then to enable hotkeys. If you have not seen it, do that first!    
 
 So what is this project for? I've extracted it from an app that has many bits which do a thing, then pause for input. One menu to rule them all. If you need interactive menus, this exact structure won't work. For example a word processor would bake the menus into the text entry procedure. 
 
-To use, ask the user if they have a mouse. Provide up to a screenful of output, then call doMenu. If hasmouse=FALSE, doMenu will print an inverted text menu line or two at the bottom of the filled screen, ie: "&lt;B&gt;ookmark   &lt;G&gt;oto page"... and accept single letter keyboard input until user matches a hotkey.
-
-If hasmouse=TRUE, user gets WindInt menus and scroll bars. Soon <i>(thanks Curtis!)</i> with hotkeys. So click open+click item, or in EOU 1.0, avoid that with ALT+hotkey.
+To use, ask the user if they have a mouse. Provide up to a screenful of output, then call doMenu. If hasmouse=FALSE, doMenu will print an inverted text menu line or two at the bottom of the filled screen, ie: "&lt;B&gt;ookmark   &lt;G&gt;oto page"... and accept single letter keyboard input until user matches a hotkey. If hasmouse=TRUE, user gets WindInt menus and scroll bars. Soon <i>(thanks Curtis!)</i> with hotkeys. So click open+click item, or in EOU 1.0, avoid that with ALT+hotkey.
 
 Your calling program will get back a call number, and could do something like:
 
@@ -44,7 +42,7 @@ Menus above 32 are definable. And so we will define menu 33 as 'Bookmark' and me
 
 Program flow
 
-Keyboard might mean low-end machine, we'll check first and run a little standalone keyboard menu lines 10-50, in a locked loop to force a valid respose. With our table, so the edits are pretty obvious. 
+Keyboard might mean low-end machine, we'll check first and run a little standalone keyboard menu lines 10-50, in a locked loop to force a valid respose. With our table, the edits are pretty obvious. 
 
 Mouse begins translating the chart to gfx2 calls around lines 60-80, then entering the double loop that will again trap our users until they play nice. In the loop, we check for a keypress in the ALT-letter range, redshift to printable and get it's item # from the hotkey strings you have thoughtfully edited into these lines around 103,108:
 
