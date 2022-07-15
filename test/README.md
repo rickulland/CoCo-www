@@ -28,16 +28,16 @@ Menus above 32 are definable. And so we will define menu 33 as 'Bookmark' and me
 <table>
 <tr><td>id</td><td>item</td><td>hotkey</td><td>call</td><td>label</td></tr>
 <tr><td>33</td><td></td><td></td></td><td></td><td>Bookmark</td></tr>
-<tr><td>1</td><td></td><td>b</td><td>6</td><td>&lt;B&gt;M this</td></tr>
-<tr><td>2</td><td></td><td>g</td><td>7</td><td>&lt;G&gt;oto BM</td></tr>
-<tr><td>3</td><td></td><td>m</td><td>8</td><td>&lt;M&gt;anage BM</td></tr>
-<tr><td>4</td><td></td><td>l</td><td>9</td><td>&lt;L&gt;inks</td></tr>
+<tr><td></td><td>1</td><td>b</td><td>6</td><td>&lt;B&gt;M this</td></tr>
+<tr><td></td><td>2</td><td></td><td>g</td><td>7</td><td>&lt;G&gt;oto BM</td></tr>
+<tr><td></td><td>3</td><td></td><td>m</td><td>8</td><td>&lt;M&gt;anage BM</td></tr>
+<tr><td></td><td>4</td><td>l</td><td>9</td><td>&lt;L&gt;inks</td></tr>
 <tr><td>34</td><td></td><td></td></td><td></td><td>Page</td></tr>
-<tr><td>1</td><td></td><td>c</td><td>10</td><td>&lt;C&gt;lear</td></tr>
-<tr><td>2</td><td></td><td>r</td><td>11</td><td>&lt;R&gt;eload</td></tr>
-<tr><td>3</td><td></td><td>n</td><td>12</td><td>&lt;N&gt;ew tab</td></tr>
-<tr><td>4</td><td></td><td>p</td><td>13</td><td>&lt;P&gt;rint</td></tr>
-<tr><td>5</td><td></td><td>s</td><td>14</td><td>&lt;S&gt;ave</td></tr>
+<tr><td></td><td>1</td><td>c</td><td>10</td><td>&lt;C&gt;lear</td></tr>
+<tr><td></td><td>2</td><td>r</td><td>11</td><td>&lt;R&gt;eload</td></tr>
+<tr><td></td><td>3</td><td>n</td><td>12</td><td>&lt;N&gt;ew tab</td></tr>
+<tr><td></td><td>4</td><td>p</td><td>13</td><td>&lt;P&gt;rint</td></tr>
+<tr><td></td><td>5</td><td>s</td><td>14</td><td>&lt;S&gt;ave</td></tr>
 </table>
 
 Program flow
