@@ -8,7 +8,6 @@ DIM fn1,fn2,int1,menu_id,menu_item:INTEGER
 DIM hotkey,instr:STRING[1]
 
 IF hasmouse=FALSE THEN 
-  scrnf:=scrnx \(* assuming plain font FIXME 
   (* set palettes 0-3 for greyscale
   RUN gfx2("palette",0,0) \RUN gfx2("palette",1,7)
   RUN gfx2("palette",2,56) \RUN gfx2("palette",3,63)
