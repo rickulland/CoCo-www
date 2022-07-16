@@ -29,8 +29,8 @@ Menus above 32 are definable. And so we will define menu 33 as 'Bookmark' and me
 <tr><td>id</td><td>item</td><td>hotkey</td><td>call</td><td>label</td></tr>
 <tr><td>33</td><td></td><td></td></td><td></td><td>Bookmark</td></tr>
 <tr><td></td><td>1</td><td>b</td><td>6</td><td>&lt;B&gt;M this</td></tr>
-<tr><td></td><td>2</td><td></td><td>g</td><td>7</td><td>&lt;G&gt;oto BM</td></tr>
-<tr><td></td><td>3</td><td></td><td>m</td><td>8</td><td>&lt;M&gt;anage BM</td></tr>
+<tr><td></td><td>2</td><td>g</td><td>7</td><td>&lt;G&gt;oto BM</td></tr>
+<tr><td></td><td>3</td><td>m</td><td>8</td><td>&lt;M&gt;anage BM</td></tr>
 <tr><td></td><td>4</td><td>l</td><td>9</td><td>&lt;L&gt;inks</td></tr>
 <tr><td>34</td><td></td><td></td></td><td></td><td>Page</td></tr>
 <tr><td></td><td>1</td><td>c</td><td>10</td><td>&lt;C&gt;lear</td></tr>
