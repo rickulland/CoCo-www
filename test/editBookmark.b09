@@ -1,0 +1,155 @@
+PROCEDURE editBookmark
+     (* 7/19/22  
+     TYPE bookmarks=server,page,title:STRING[144]
+     DIM instr:STRING[144]
+     DIM spacr:STRING[40]
+     DIM path:BYTE
+     DIM int1,fn2,doloc,dopag,readloc,reclen:INTEGER
+     DIM PgFlg:BOOLEAN
+     DIM bookmark,bookmark2:bookmarks
+     reclen:=432 \spacr:="                                        "
+     doloc:=1 \dopag:=0
+     
+     RUN gfx2("dwend") \RUN gfx2("dwset",7,0,0,80,25,0,3,0)
+     RUN gfx2("palette",0,0) \RUN gfx2("palette",1,7)
+     RUN gfx2("palette",2,56) \RUN gfx2("palette",3,63)
+     RUN gfx2("owset",1,5,5,70,14,1,2)
+     RUN gfx2("curon") \RUN gfx2("gcset",0,0)
+     
+     (* ON ERROR GOTO 1000  \(* uncomment after debug FIXME
+10   OPEN #path,"/dd/SYS/booktest.www":UPDATE
+     
+     PgFlg:=TRUE
+     LOOP 
+       IF PgFlg=TRUE THEN 
+         PgFlg:=FALSE
+         RUN gfx2("clear")
+         FOR fn2=0 TO 9
+           readloc:=fn2+dopag*10
+           SEEK #path,readloc*reclen
+           GET #path,bookmark
+           PRINT readloc+1; " "; bookmark.server; "-"; bookmark.page
+            ; "-"; bookmark.title \(* DEBUG
+           (* PRINT readloc+1; " "; LEFT$(bookmark.title,35); " -- "; LEFT$(bookmark.server,35)
+         NEXT fn2
+         RUN gfx2("curxy",0,doloc-1) \RUN gfx2("revon")
+         PRINT dopag*10+doloc;  \RUN gfx2("revoff")
+       ENDIF 
+       RUN gfx2("curxy",0,11) \RUN gfx2("revon")
+       PRINT LEFT$(spacr,18); "Keys: <D>elete <Add> <E>dit <Q>uit"
+        ; LEFT$(spacr,18); 
+       PRINT LEFT$(spacr,6); "Arrows: up, down move one line.  left, right move one page"
+        ; LEFT$(spacr,5); 
+       RUN gfx2("revoff")
+       instr:=""
+       WHILE instr="" DO 
+         RUN bnkey(instr)
+       ENDWHILE 
+       RUN gfx2("curxy",0,doloc-1) \RUN gfx2("revoff")
+       PRINT dopag*10+doloc;  \RUN gfx2("revon")
+       IF instr=CHR$(12) THEN  \(* up 
+         PgFlg:=TRUE
+         doloc:=doloc-1
+         IF doloc<0 THEN 
+           doloc:=9 \dopag:=dopag-1 \PgFlg:=TRUE
+         ENDIF 
+       ELSE 
+         IF instr=CHR$(10) THEN  \(* down 
+           doloc:=doloc+1
+           IF doloc>10 THEN 
+             doloc:=1 \dopag:=dopag+1 \PgFlg:=TRUE
+           ENDIF 
+         ENDIF 
+       ENDIF 
+       IF instr=CHR$(9) THEN  \(* page up  
+         dopag:=dopag+1 \PgFlg:=TRUE
+       ELSE 
+         IF instr=CHR$(8) THEN  \(* page down
+           dopag:=dopag-1 \PgFlg:=TRUE
+         ENDIF 
+       ENDIF 
+       IF dopag<0 THEN 
+         dopag:=4
+       ENDIF 
+       dopag:=MOD(dopag,5)
+       readloc:=dopag*10+doloc-1
+       
+       RUN gfx2("curxy",0,doloc-1) \RUN gfx2("revon")
+       PRINT dopag*10+doloc;  \RUN gfx2("revoff")
+       
+       IF instr="e" OR instr="E" THEN  \(* edit
+         SEEK #path,readloc*reclen
+         GET #path,bookmark
+         PgFlg:=TRUE \RUN gfx2("clear")
+         PRINT "  Title:"; bookmark.title
+         INPUT "New text or <Enter> to keep",instr
+         IF instr<>"" THEN 
+           bookmark.title:=instr
+         ENDIF 
+         PRINT "  Server:"; bookmark.server
+         INPUT "New text or <Enter> to keep",instr
+         IF instr<>"" THEN 
+           IF LEFT$(instr,4)="http" THEN 
+             instr:=MID$(instr,SUBSTR("//",instr)+2,144)
+           ENDIF 
+           bookmark.server:=instr
+         ENDIF 
+         PRINT "  Page:"; bookmark.page
+         INPUT "New text or <Enter> to keep",instr
+         IF instr<>"" THEN 
+           bookmark.page:=instr
+         ENDIF 
+         SEEK #path,readloc*reclen
+         PUT #path,bookmark
+       ELSE 
+         IF instr="d" OR instr="D" THEN  \(* delete 
+           PgFlg:=TRUE
+           FOR readloc=doloc+1 TO 40
+             SEEK #path,readloc*reclen \ GET #path,bookmark
+             SEEK #path,(readloc-1)*reclen \ PUT #path,bookmark
+           NEXT readloc
+         ELSE 
+           IF instr="a" OR instr="A" THEN  \(* add 
+             PgFlg:=TRUE \RUN gfx2("clear")
+             INPUT "Enter a title for the new bookmark: ",instr
+             bookmark.title:=instr
+             INPUT "Enter the URL for new bookmark: ",instr
+             IF LEFT$(instr,4)="http" THEN 
+               instr:=MID$(instr,SUBSTR("//",instr)+2,144)
+             ENDIF 
+             int1:=SUBSTR("/",instr)
+             IF int1<>0 THEN 
+               bookmark.server:=LEFT$(instr,int1-1)
+               bookmark.page:=RIGHT$(instr,int1+1)
+             ELSE 
+               bookmark.server:=instr
+               bookmark.page:="index.html"
+             ENDIF 
+             FOR readloc=39 TO doloc STEP -1
+               SEEK #path,readloc*reclen \ GET #path,bookmark2
+               SEEK #path,(readloc+1)*reclen \ PUT #path,bookmark2
+             NEXT readloc
+             SEEK #path,doloc*reclen \ PUT #path,bookmark
+             PgFlg:=TRUE
+           ELSE 
+             IF instr="q" OR instr="Q" THEN 
+               CLOSE #path \RUN gfx2("curoff") \RUN gfx2("owend"
+                )
+               END 
+             ENDIF 
+           ENDIF 
+         ENDIF 
+       ENDIF 
+     ENDLOOP 
+     
+1000 ON ERROR 
+     CREATE #path,"/dd/SYS/booktest.www":WRITE
+     bookmark.server=""
+     bookmark.page=""
+     bookmark.title=""
+     FOR fn1=1 TO 50
+       PUT #path,bookmark
+     NEXT fn1
+     
+     CLOSE #path
+     GOTO 10
