@@ -1,4 +1,5 @@
-testMenu, doMenu
+<h2>testMenu, doMenu</h2>
+
 Here is a demo based on <a href="https://youtu.be/FJm2G_n1Gx0"> L Curtis Boyle and Canadian RetroThings video </a> presented at the last CoCoFest, plus additional work Curtis has done since then to enable hotkeys. If you have not seen their video, do that first!    
 
 So what is this project for? I've extracted it from an app that has many bits which do a thing, then pause for input. One menu to rule them all. If you need interactive menus, this exact structure won't work. For example a word processor would bake the menus into the text entry procedure. 
@@ -41,7 +42,7 @@ Menus above 32 are definable. And so we will define menu 33 as 'Bookmark' and me
 <tr><td></td><td>5</td><td>s</td><td>14</td><td>&lt;S&gt;ave</td></tr>
 </table>
 
-Program flow
+<h4>Program flow</h4>
 
 Keyboard might mean low-end machine, we'll check first and run a little standalone keyboard menu lines 10-50, in a locked loop to force a valid respose. With our table, the edits are pretty obvious. 
 
@@ -52,5 +53,5 @@ Mouse begins translating the chart to gfx2 calls around lines 60-80, then enteri
 
 If no hotkeys were pressed, we analyse the click with our user defined pachinko tree. Failing that, a final test for system menu clicks. ENDLOOP.
 
-editBookmark
+<h2>editBookmark</h2>
 Umm... when you make a string bigger, but don't redo the record size, umm... This standalone version creates and edits /dd/SYS/booktest.www, so the old browser still works? for now. It will replace the current getBookmark and putBookmark in the next release, and you'll just copy booktest.www to bookmark.www and viola! Premade favorites. 
