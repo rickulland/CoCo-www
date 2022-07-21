@@ -1,3 +1,4 @@
+testMenu, doMenu
 Here is a demo based on <a href="https://youtu.be/FJm2G_n1Gx0"> L Curtis Boyle and Canadian RetroThings video </a> presented at the last CoCoFest, plus additional work Curtis has done since then to enable hotkeys. If you have not seen their video, do that first!    
 
 So what is this project for? I've extracted it from an app that has many bits which do a thing, then pause for input. One menu to rule them all. If you need interactive menus, this exact structure won't work. For example a word processor would bake the menus into the text entry procedure. 
@@ -50,3 +51,6 @@ Mouse begins translating the chart to gfx2 calls around lines 60-80, then enteri
 	menu_item:=SUBSTR(hotkey,"crnps")
 
 If no hotkeys were pressed, we analyse the click with our user defined pachinko tree. Failing that, a final test for system menu clicks. ENDLOOP.
+
+editBookmark
+Umm... when you make a string bigger, but don't redo the record size, umm... This standalone version creates and edits /dd/SYS/booktest.www, so the old browser still works? for now. It will replace the current getBookmark and putBookmark in the next release, and you'll just copy booktest.www to bookmark.www and viola! Premade favorites. 
