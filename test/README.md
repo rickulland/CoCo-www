@@ -54,4 +54,6 @@ Mouse begins translating the chart to gfx2 calls around lines 60-80, then enteri
 If no hotkeys were pressed, we analyse the click with our user defined pachinko tree. Failing that, a final test for system menu clicks. ENDLOOP.
 
 <h2>editBookmark</h2>
-Umm... when you make a string bigger, but don't redo the record size, umm... This standalone version creates and edits /dd/SYS/booktest.www, so the old browser still works? for now. It will replace the current getBookmark and putBookmark in the next release, and you'll just copy booktest.www to bookmark.www and viola! Premade favorites. 
+Umm... when you make a string bigger, but don't redo the disk file record size, umm... This standalone editor creates or edits /dd/SYS/booktest.www in the new record size. If you are messing with 'main' right now don't copy this to /dd/sys/bookmark.www. Otherwise, when the new branch is merged in, do that and you've got a reading list good to go. And yes, this is the new bookmark menu post merge.
+
+
