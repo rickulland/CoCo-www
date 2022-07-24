@@ -101,12 +101,12 @@ LOOP
         menu_id:=0 \menu_item:=0
         menu_item:=SUBSTR(hotkey,"bgml")
         IF menu_item>0 THEN 
-          menu_id=33
+          menu_id:=MId_Book
           LpExitFlg:=TRUE
         ELSE 
           menu_item:=SUBSTR(hotkey,"crnps")
           IF menu_item>0 THEN 
-            menu_id=34
+            menu_id:=MId_Page
             LpExitFlg:=TRUE
           ENDIF 
         ENDIF 
@@ -123,7 +123,7 @@ EXITIF LpExitFlg=TRUE THEN
 ENDEXIT 
 ENDLOOP 
 
-IF menu_id=33 OR hotkey<>"" THEN 
+IF menu_id=MId_Book THEN 
   IF menu_item=1THEN 
     menucall:=6 \ END  \(* bookmark page
   ELSE 
@@ -141,7 +141,7 @@ IF menu_id=33 OR hotkey<>"" THEN
   ENDIF 
 ENDIF 
 
-IF menu_id=34 OR hotkey<>"" THEN 
+IF menu_id=MId_Page THEN 
   IF menu_item=1 THEN 
     menucall:=10 \ END  \(* clear form
   ELSE 
