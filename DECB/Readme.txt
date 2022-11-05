@@ -7,9 +7,9 @@ Local address
 1160 replace decimal numbers 192 168 0 7 with an unused IP address @home
 
 Remote 
-  20 replace ‘/coco.html’ with name or path to target web page
-  22 replace ‘rickLT.conect2020.org’ with the web server hostname
-1250 replace decimal numbers 192 168 0 124 with IP address of web server
+  20 replace ‘/cocoio/index.html’ with name or path to target web page
+  22 replace ‘play-classics.net’ with the web server hostname
+1250 replace decimal numbers 192 168 0 124 with IP address of a web server
 
 To read, here is a variable decoder ring. 
 
@@ -19,9 +19,7 @@ LOCAL VARS
    S     - STATUS
 
 NATIONAL VARS
-   DL       - DATA TO READ IN (obs?)
    EB       - END OF BUFFER
-   NP       - NEXT POINTER (obs?)
    SG       - DATA SEGMENT SIZE
    SS       - STRING START (slicing)
 
@@ -91,7 +89,6 @@ get write pointer from SN_TX-RD, AND with write mask to get abs address
      2916 F = B AND D : G = C AND E
      2918 RL = ((F*256)+G)+RB                                 'RP AND MASK+BASE
 
-
 if data is not segmented, skip pass 1, else print it
        50 RB=&H6000 : RM=&H7FF : RE=RB+RM                     'READ BASE, MASK
      2560 SG=RZ                                               'PROPOSED=ALL BYTES
@@ -118,6 +115,5 @@ poke last used address +1 to wizzy, set read done
      2652 RZ=RZ+1 : B=INT(RZ/256) : C=RZ-(256*B)              '1 PAST LAST READ       
      2654 POKE &HFF6B,B : POKE &HFF6B,C            
      2660 POKE &HFF69,&H04 : POKE &HFF6A,&H01 : POKE &HFF6B,&H40 'SN-CR=READ DONE
-
 
 repeat send or recv as needed ---------------------------------------------
