@@ -1,5 +1,5 @@
 Here is the early DECB version of a web browser prototype. All it's going to do is connect to a hardcoded IP address, ask for a page and stream it to the screen. 
-When we get to the end of the page, we won’t respond, the web server will get made at us and hang up. As simple a working example as I could come up with. 
+When we get to the end of the page, we won’t respond, the web server will get mad at us and hang up. As simple a working example as I could come up with. 
 
 To configure, edit these lines:
 
