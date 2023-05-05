@@ -1,6 +1,6 @@
 <h1> Rick's Random Stuff </h1>
 
-DECB - very eary web browser idea
-menutest - WindInt mouse menus with hotkeys
-wwwV1 - the original, monolithic we browser. Use keyboard mode!
-wwwV2 - new hotness begins here. Background utils like caching dns 
+<b>DECB</b> - Very eary web browser idea<br>
+<b>menutest</b> - WindInt mouse menus with hotkeys<br>
+<b>wwwV1</b> - the original, monolithic web browser. Use keyboard mode!<br>
+<b>wwwV2</b> - new hotness begins here. Background utils like caching dns<br>
