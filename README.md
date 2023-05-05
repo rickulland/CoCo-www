@@ -1,4 +1,4 @@
-<h1> Rick's Random Stuff </h1>
+<h1> Rick's Random WWW </h1>
 
 <b>DECB</b> - Very eary web browser idea<br>
 <b>menutest</b> - WindInt mouse menus with hotkeys<br>
