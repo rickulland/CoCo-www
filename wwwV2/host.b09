@@ -34,7 +34,6 @@ PROCEDURE host
          midstr:=MID$(instr,loca+7,LEN(instr)-loca)
          loca:=SUBSTR(CHR$(10),midstr)
          outstr:=LEFT$(midstr,loca-2)
-         (* PRINT "outstr : "; outstr
          CLOSE #path
          GOTO 200
        ENDIF 
@@ -56,10 +55,15 @@ PROCEDURE host
            OPEN #path,"/DD/SYS/hosts":UPDATE \(* add to hosts file
            WHILE EOF(#path)<>TRUE DO 
              READ #path,instr
-             IF SUBSTR(hostname,instr)>0 THEN 
+             IF SUBSTR(hostname,instr)>0 THEN \(* already there
                CLOSE #path \ END 
              ENDIF 
            ENDWHILE 
+           FOR cnt=1 TO 4
+             PRINT #path,hostaddr(cnt); 
+             IF cnt<4 THEN  \ PRINT #path; ".";  \ ENDIF 
+           NEXT cnt
+           PRINT #path,"   "; hostname
            CLOSE #path
          ELSE 
            PRINT "Would have written to hosts:"
