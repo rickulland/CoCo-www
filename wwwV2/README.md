@@ -1,5 +1,5 @@
 The start of a new browser. Original www was written as one Basic09 workspace. When it ran out of said space, there was no way to split things up and not breed many, many bugs. Ask me how I know.  
-V2 begins anew with these basic utilities. You will need the frobio commands copied to /dd/SYS/CMDS/f.dig, etc. And then use 'attr filename e pe' to make them all runnable. 
+V2 begins anew with these basic utilities. You will need the frobio commands copied to /dd/SYS/CMDS/f.dig, etc. And then use 'attr filename e pe' to make them all runnable. Edit the example interfaces and hosts, put them in /dd/SYS/...
 
 Biggest thing first, the start to a local dns cache
 
