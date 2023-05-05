@@ -1,0 +1,15 @@
+PROCEDURE testit
+     DIM cnt:INTEGER
+     DIM hostname:STRING[144]
+     DIM hostaddr(4):INTEGER
+     ON ERROR GOTO 10
+     SHELL "del /dd/sys/tempdns.txt"
+10   ON ERROR 
+     SHELL "f.dhcp coco"
+     INPUT "hostname? ",hostname
+     RUN host(hostname,hostaddr)
+     PRINT "Back from host. Got: "; hostname; " = "; 
+     FOR cnt=1 TO 4
+       PRINT hostaddr(cnt); "."; 
+     NEXT cnt
+     PRINT 
