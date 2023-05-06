@@ -4,16 +4,16 @@ PROCEDURE host
      (* config:   /dd/SYS/hosts
      (* Address 127.0.0.1 is unique and sets the CoCo's hostname
      (* For dhcp, the first 4 chars need to be unique on the LAN
-     (* The remainder are ip address/hostname pairs.  
+     (* The remaining lines are ip address/hostname pairs.  
      (* Use a leading # to disable a line:
      (* 
      (* 127.0.0.1   rickscoco.computerconect.com
-     (* 192.168.1.7  rickslaptop.org
-     (* 192.168.0.7  anotherpark.anothersunday.com
+     (* 192.168.1.7  rickslaptop.computerconect.org
+     (* 192.168.0.42  anotherpark.anothersunday.com
      (* #123.32.3.1  thisline.commented.out
      (* 
-     (* host returns the first match, else calls f.dig recursively to get address
-     (* new matches appended to /dd/SYS/hosts with original hostname, not CNAME(s)
+     (* 'host' returns the first match, else calls f.dig recursively to get address
+     (* new matches appended to /dd/SYS/hosts with original hostname, as cache
      
      DIM cnt,loca,path:INTEGER
      DIM debug,match:BOOLEAN
@@ -22,7 +22,7 @@ PROCEDURE host
      PARAM hostname:STRING[144]
      PARAM hostaddr(4):INTEGER
      debug:=FALSE
-     namesrv:="8.8.8.8"
+     namesrv:="8.8.8.8"  \(* pick yer poison, a PARAM soon FIXME
      
 10   (* check for a presearch file else 100
      ON ERROR GOTO 100
@@ -50,7 +50,7 @@ PROCEDURE host
          IF loca<>0 THEN 
            instr:=LEFT$(midstr,loca-1)
          ENDIF 
-         GOSUB 300
+         GOSUB 300  \(* string to 4 bytes
          IF debug=FALSE THEN 
            OPEN #path,"/DD/SYS/hosts":UPDATE \(* add to hosts file
            WHILE EOF(#path)<>TRUE DO 
@@ -106,7 +106,6 @@ PROCEDURE host
      IF debug=TRUE THEN 
        SHELL "cat /dd/SYS/tempdns.txt"
      ENDIF 
-     ON ERROR 
      GOTO 10
      
 300  instr:=instr+"."
