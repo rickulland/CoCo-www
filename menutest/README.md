@@ -1,6 +1,6 @@
 <h2>testMenu, doMenu</h2>
 
-Here is a demo based on <a href="https://youtu.be/FJm2G_n1Gx0"> L Curtis Boyle and Canadian RetroThings video </a> presented at the last CoCoFest, plus additional work Curtis has done since then to enable hotkeys. If you have not seen their video, do that first!    
+Here is a demo based on <a href="https://youtu.be/FJm2G_n1Gx0"> L Curtis Boyle and Canadian RetroThings video </a> presented at the 2022 CoCoFest, plus additional work Curtis has done since then to enable hotkeys. If you have not seen their video, do that first!    
 
 So what is this project for? I've extracted it from an app that has many bits which do a thing, then pause for input. One menu to rule them all. If you need interactive menus, this exact structure won't work. For example a word processor would bake the menus into the text entry procedure. 
 
