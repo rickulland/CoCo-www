@@ -18,3 +18,9 @@ Not really, but if the chip is configured it prints the basic IPv4 config data i
 Uses /dd/SYS/interfaces, only 1 interface for now. It supports the Linux trick of setting a full static interface in the file, then change the one word 'static' to 'dhcp' when traveling.  
 
 Notes: I miss sed.
+
+<b>editbookmark</b>
+Manage bookmark.www, history.www, or even link.www if you want to.
+
+<b>filefix</b>
+If you've got an established bookmark file from the original www, use this to convert to the new bookmark.www.

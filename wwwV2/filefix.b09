@@ -1,0 +1,38 @@
+PROCEDURE filefix
+
+TYPE bookmarks=server,page,title:STRING[144]
+DIM bookmark:bookmarks
+DIM bookfile:STRING[40]
+DIM path:BYTE
+DIM int1,fn2,reclen,recnum:INTEGER
+reclen:=432 \ recnum:=0
+INPUT "File to convert? (bookmark.www) ",bookfile
+  IF bookfile="" THEN 
+    bookfile:="bookmark.www"
+  ENDIF 
+  IF RIGHT$(bookfile,4)<>".www" THEN 
+    bookfile:=bookfile+".www"
+  ENDIF 
+
+10 OPEN #path,"/dd/SYS/"+bookfile:UPDATE
+LOOP
+  SEEK #path,recnum*reclen
+  GET #path,bookmark
+    PRINT recnum;" ";bookmark.server;" ";bookmark.page" ";bookmark.title 
+  EXITIF bookmark.server="" THEN
+    PRINT "Found ";recnum;" records"
+  ENDEXIT
+  recnum:=recnum+1
+ENDLOOP 
+(* move everything up 1
+FOR fn2=recnum TO 0 STEP -1 
+  SEEK #path,fn2*reclen \ GET #path,bookmark
+  SEEK #path,(fn2+1)*reclen \ PUT #path,bookmark
+NEXT readloc
+bookmark.server="reclen recnum"
+bookmark.page=STR$(reclen)
+bookmark.title=STR$(recnum)
+SEEK #path,0
+PUT #path,bookmark
+CLOSE #path
+END 
