@@ -1,7 +1,7 @@
-URE www
-     (* Worst Web Wrangler 7/31/23 copyback 
+PROCEDURE www
+     (* Worst Web Wrangler 7/31/23 
      (* assuming 2k size TX & RX buffer for all, using socket 1 and 3
-     (* Requires 'frobio' f.utils ***FIXME*** link
+     (* Requires 'frobio' https://github.com/strickyak/frobio/
      (* also the packed procedures host, ifup, ifconfig
      (* AND local procs getdns, gotoHost, doBookmark
      
@@ -22,8 +22,7 @@ URE www
      DIM hotkey,instr:STRING[1]
      DIM stdmenus(32):STRING[16]
      DIM wd(3),m1(4),m2(5),str:STRING
-     DIM desctx,filename,linktx,tagtx,titletx,descstr,urlstr:STRING
-      [80]
+     DIM desctx,filename,linktx,tagtx,titletx,descstr,urlstr:STRING[80]
      DIM linein,workstr:STRING[144]
      (* _____ setup 
      debug:=FALSE
@@ -225,8 +224,7 @@ URE www
            str:=MID$(workstr,fn4,1)
            IF str=" " AND fn4<scrnf-2 THEN 
              PRINT LEFT$(workstr,fn4)
-             lines:=lines+1 \linein:=RIGHT$(workstr,LEN(workstr)
-              -fn4)
+             lines:=lines+1 \linein:=RIGHT$(workstr,LEN(workstr)-fn4)
              linelen:=LEN(linein)
              IF inundl=TRUE THEN 
                GOSUB 1310 \RUN gfx2("undlnoff") \inundl:=FALSE
@@ -239,16 +237,14 @@ URE www
 1220   (* doMenu     
        IF hasmouse=FALSE THEN 
          RUN gfx2("curxy",0,23) \RUN gfx2("revon")
-         PRINT "<B>ookmark   <G>oto page   <H>istory   <Enter>next    <L>ink   <Q>uit  "
-          ; 
+         PRINT "<B>ookmark   <G>oto page   <H>istory   <Enter>next    <L>ink   <Q>uit  "; 
          RUN gfx2("revoff")
          LOOP 
            instr:=""
            WHILE instr="" DO 
              RUN bnkey(instr)
            ENDWHILE 
-           int1:=ASC(instr) \ IF int1>96 THEN  \instr:=CHR$(int1
-              -32) \ ENDIF 
+           int1:=ASC(instr) \ IF int1>96 THEN  \instr:=CHR$(int1-32) \ ENDIF 
            int2:=SUBSTR(instr,"bghlq")
          EXITIF int1=13 OR int2>0 THEN 
            hotkey:=instr
@@ -259,8 +255,7 @@ URE www
          LOOP 
            LOOP 
              RUN gfx2("onmouse",0)
-             RUN gfx2("mouse",valid,fire,msx,msy,area,fullx,fully
-              )
+             RUN gfx2("mouse",valid,fire,msx,msy,area,fullx,fully)
              IF valid=1 THEN  \(* Check keypress before mouse
                regs.a:=0 \regs.b:=1 \hotkey:=""
                RUN byscall($8D,regs)
@@ -294,12 +289,10 @@ URE www
            
            IF menu_id=MId_Book OR SUBSTR(instr,"bghl")>0 THEN 
              IF menu_item=1 OR hotkey="b" THEN 
-               RUN doBookmark("bookmark.www",-1,bookmark) \ GOTO
-                1290
+               RUN doBookmark("bookmark.www",-1,bookmark) \ GOTO 1290
              ENDIF 
              IF menu_item=2 OR hotkey="g" THEN 
-               RUN doBookmark("bookmark.www",0,bookmark) \ GOSUB
-                300
+               RUN doBookmark("bookmark.www",0,bookmark) \ GOSUB 300
                GOTO 100
              ENDIF 
              IF menu_item=3 OR hotkey="h" THEN 
@@ -352,8 +345,7 @@ URE www
            FOR fn1=1 TO 16
              FOR fn2=1 TO 2
                IF menuy=lypos(fn1,fn2) THEN 
-                 IF menux>=lxstart(fn1,fn2) AND menux<=lxend(fn1
-                  ,fn2) THEN 
+                 IF menux>=lxstart(fn1,fn2) AND menux<=lxend(fn1,fn2) THEN 
                    RUN doBookmark("link.www",fn1,bookmark)
                    RUN gotoHost(bookmark)
                    GOTO 200
