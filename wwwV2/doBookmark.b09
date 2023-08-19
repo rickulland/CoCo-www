@@ -1,5 +1,5 @@
 PROCEDURE doBookmark
-     (* doBookmark 7/23/23
+     (* doBookmark 8/18/23 
      (* recnum - <0 save  0 menu  >0 return record
      TYPE bookmarks=server,page,title:STRING[144]
      DIM instr,zerver,zage,zitle:STRING[144]
@@ -10,7 +10,7 @@ PROCEDURE doBookmark
      PARAM filename:STRING[80]
      PARAM recnum:INTEGER
      PARAM bookmark:bookmarks
-     reclen:=432 \rectot:=0 \spacr:="                    "
+     reclen:=SIZE(bookmark) \rectot:=0 \spacr:="                    "
      spacr:=spacr+spacr
      doloc:=1
      ON ERROR GOTO 1000
@@ -28,12 +28,14 @@ PROCEDURE doBookmark
          CLOSE #path \RUN gfx2("owend") \ END 
        ENDIF 
      ENDIF 
+     
+     dopag:=0 \doloc:=1
      (* IF filename<>"bookmark.www" THEN  \(* reverse order
      (* dopag:=INT(rectot/10) \doloc:=rectot
      (* ENDIF 
-     dopag:=0 \doloc:=1
-     lastpag:=INT(rectot/10) \PgFlg:=TRUE
+     lastpag:=INT(rectot/10) \PgFlg:=TRUE \(* note fixed page size
      RUN gfx2("owset",1,5,5,70,14,1,2)
+     doloc:=1
      LOOP 
        IF PgFlg=TRUE THEN 
          PgFlg:=FALSE \RUN gfx2("clear")
