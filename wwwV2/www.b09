@@ -1,508 +1,517 @@
 PROCEDURE www
-     (* Worst Web Wrangler 8/18/23
-     (* assuming 2k size TX & RX buffer for all, using socket 1 and 3
-     (* Requires 'frobio' https://github.com/strickyak/frobio/
-     (* also the packed procedures host, ifup, ifconfig
-     (* AND local procs getdns, gotoHost, doBookmark
-     
-     TYPE bookmarks=server,page,title:STRING[144]
-     DIM bookmark:bookmarks
-     TYPE registers=cc,a,b,dp:BYTE; x,y,u:INTEGER
-     DIM regs:registers
-     DIM debug,header,intag,inlink,intitle,inundl:BOOLEAN
-     DIM getlink,hasmouse,LpExitFlg:BOOLEAN
-     DIM lxstart(16,2),lxend(16,2),lypos(16,2):BYTE
-     DIM menu_id,menu_item,MId_Book,MId_Page:INTEGER
-     DIM valid,fire,msx,msy,area:INTEGER
-     DIM recnum,reclen,ccode,menucall,menux,menuy:INTEGER
-     DIM int1,int2,int3,int4,fn1,fn2,fn3,fn4:INTEGER
-     DIM tryct,linkct,segment,segstart,xcur,ycur:INTEGER
-     DIM linelen,lines,scrnf:INTEGER
-     DIM raddr,rbase,rend,rmask,roff,rsize,rptr:INTEGER
-     DIM hotkey,instr:STRING[1]
-     DIM stdmenus(32):STRING[16]
-     DIM wd(3),m1(4),m2(5),str:STRING
-     DIM desctx,filename,linktx,tagtx,titletx,descstr,urlstr:STRING[80]
-     DIM linein,workstr:STRING[144]
-     (* _____ setup 
-     debug:=FALSE
-     scrnx:=80 \scrny:=22 \scrnf:=106 \(* FIXME should be selectable
-     soc1:=$05 \soc2:=$07 \(* FIXME should be selectable
-     (* _____ end setup 
-     MId_Book:=33 \MId_Page:=34
-     
-     lines:=0 \tryct:=1 \linkct:=0 \recnum:=0 \segstart:=0
-     linktx:="" \titletx:="" \menux:=0 \menuy:=0
-     header:=TRUE \intag:=FALSE \inundl:=FALSE
-     inlink:=FALSE \intitle:=FALSE \getlink:=FALSE
-     RUN gfx2("clear") \instr:="" \hasmouse:=TRUE
-     GOTO 10 \(* FIXME remove for prod
-     PRINT "Hires mouse or keyboard(m/k)?"; 
-     WHILE instr="" DO  \RUN INKEY(instr) \ ENDWHILE 
-     IF instr="k" THEN  \hasmouse:=FALSE \ ENDIF 
-10   IF hasmouse=TRUE THEN 
-       RUN gfx2("dwend") \RUN gfx2("dwset",7,0,0,80,25,0,3,0)
-       GOSUB 1330 \(* set color
-       RUN gfx2("gcset",$CA,1) \RUN gfx2("setmouse",3,255,1)
-       RUN gfx2("title",wd,"www",40,10,2)
-       (* config disable/enable, set last # to 0/1
-       RUN gfx2("menu",wd,1,"Bookmark",MId_Book,10,4,m1,1)
-       RUN gfx2("item",m1,1,"<B>M this",1)
-       RUN gfx2("item",m1,2,"<G>oto BM",1)
-       RUN gfx2("item",m1,3,"<M>anage BM",0)
-       RUN gfx2("item",m1,4,"<L>inks",1)
-       RUN gfx2("menu",wd,2,"Page",MId_Page,10,5,m2,1)
-       RUN gfx2("item",m2,1,"<C>lear",1)
-       RUN gfx2("item",m2,2,"<R>eload",1)
-       RUN gfx2("item",m2,3,"<H>istory",1)
-       RUN gfx2("item",m2,4,"<P>rint",0)
-       RUN gfx2("item",m2,5,"<S>ave",0)
-       RUN gfx2("color",2,0,2) \RUN gfx2("font",$C8,1)
-       RUN gfx2("wnset",2,wd) \RUN gfx2("curoff")
-       RUN gfx2("color",0,2) \RUN gfx2("font",$C8,$32)
-       LpExitFlg=FALSE
-     ENDIF 
-     RUN gfx2("clear") \ PRINT "Starting network..." \ SHELL "ifup"
-     RUN gfx2("clear")
-     bookmark.server:="" \bookmark.page:="" \bookmark.title:=""
-15   RUN doBookmark("bookmark.www",0,bookmark)
-     POKE $FF69,soc1 \ POKE $FF6A,$00 \ POKE $FF6B,$01 \(* TCP mode
-     ON ERROR GOTO 100
-     SHELL "del /dd/sys/link.www"
-100  ON ERROR  \RUN gotoHost(bookmark)
-200  (* start of read page
-     IF debug=TRUE THEN  \ PRINT "Waiting for data";  \ ENDIF 
-     LOOP 
-       REPEAT 
-         POKE $FF69,soc1 \ POKE $FF6A,$26 \(* Sn_RX_RSR
-         rsize:=PEEK($FF6B)*256+PEEK($FF6B)
-         IF debug=TRUE THEN  \ PRINT ".";  \ ENDIF 
-         RUN INKEY(instr) \ IF instr<>"" THEN 1220
-       UNTIL rsize<>0
-       segment:=rsize
-       RUN doBookmark("history.www",-1,bookmark)
-       POKE $FF69,$04 \ POKE $FF6A,$1E \int1:=PEEK($FF6B)
-       rbase:=int1*1024+$6000
-       POKE $FF69,soc1 \ POKE $FF6A,$1E \(* Sn_RXBUF_SIZE
-       int1:=PEEK($FF6B)*256+PEEK($FF6B)
-       rmask:=1024*int1-1 \rmax:=int1*1024
-       POKE $FF69,soc1 \ POKE $FF6A,$26 \(* Sn_RX_RSR
-       rsize:=PEEK($FF6B)*256+PEEK($FF6B)
-       POKE $FF69,soc1 \ POKE $FF6A,$28 \(* Sn_RX_RD
-       rptr:=PEEK($FF6B)*256+PEEK($FF6B)
-       int1:=INT(rptr/256) \int2:=rptr-256*int1
-       int3:=INT(rmask/256) \int4:=rmask-256*int3
-       int1:=LAND(int1,int3) \int2:=LAND(int2,int4)
-       roff:=int1*256+int2+rbase \raddr:=rbase+roff
-       IF roff+rsize>rend THEN  \(* partial frame
-         segment:=rmax-roff
-         linelen:=0 \linein:=""
-         IF debug=TRUE THEN  \ GOSUB 1500
-         ELSE  \ GOSUB 1200
-         ENDIF 
-         raddr:=rbase \segment:=rsize-rend
-         linelen:=LEN(linein) \(* keep unparsed end
-         IF debug=TRUE THEN  \ GOSUB 1500
-         ELSE  \ GOSUB 1200
-         ENDIF 
-       ELSE 
-         segment:=rsize \(* copy all data
-         linelen:=0 \linein:=""
-         IF debug=TRUE THEN  \ GOSUB 1500
-         ELSE  \ GOSUB 1200
-         ENDIF 
-       ENDIF 
-       (* _____ end of a frame. set Sn_RX_RD to last addr read
-       POKE $FF69,soc1 \ POKE $FF6A,$28
-       rptr:=PEEK($FF6B)*256+PEEK($FF6B)+rsize
-       POKE $FF69,soc1 \ POKE $FF6A,$28
-       int1:=INT(rptr/256) \int2:=rptr-256*int1
-       POKE $FF6B,int1 \ POKE $FF6B,int2
-       POKE $FF69,soc1 \ POKE $FF6A,$01 \ POKE $FF6B,$40 \(* set Sn_CR to RECV  
-     ENDLOOP 
-     
-300  (* send disconnect, verify
-     POKE $FF69,soc1 \ POKE $FF6A,$01 \ POKE $FF6B,$08
-     LOOP 
-       POKE $FF69,soc1 \ POKE $FF6A,$03
-       (* DB 1008 sometimes fails to 0?  ***FIXME***
-       (* int1:=PEEK($FF6B)
-       int1=$18
-     EXITIF int1=$18 THEN 
-       header:=TRUE
-     ENDEXIT 
-     ENDLOOP 
-     RETURN 
-     
-1200 (* html parserette 
-     int1:=INT(raddr/256) \int2:=raddr-256*int1
-     POKE $FF69,int1 \ POKE $FF6A,int2
-     (* check for error, else eat header
-     IF header=TRUE THEN 
-       charnp:=0
-       FOR fn1=1 TO segment
-         LOOP 
-           ccode:=PEEK($FF6B)
-         EXITIF ccode>31 AND ccode<128 THEN 
-         ENDEXIT 
-         ENDLOOP 
-         IF ccode=60 THEN  \(* close tag = end of header
-           header:=FALSE \intag:=TRUE
-           tagtx:="<" \segstart:=fn1 \linelen:=0
-           GOTO 1208
-         ENDIF 
-         IF fn1=10 THEN 
-           IF ccode=52 THEN  \(* 4 here = 4xx error code
-             IF tryct<6 THEN 
-               tryct:=tryct+1 \ GOTO 100
-             ENDIF 
-             GOTO 1220 \(* main menu - did we die?
-           ENDIF 
-         ENDIF 
-       NEXT fn1
-     ENDIF 
-1208 FOR fn3=segstart TO segment \(* read the page
-       ccode:=PEEK($FF6B)
-       IF ccode<32 OR ccode>127 THEN 1290
-1210   IF intitle=TRUE THEN 
-         titletx:=titletx+CHR$(ccode)
-       ENDIF 
-1212   IF intag=TRUE THEN 
-         tagtx:=tagtx+CHR$(ccode)
-         IF getlink=TRUE THEN 
-           IF RIGHT$(linktx,5)="href=" OR RIGHT$(linktx,5)="HREF=" THEN 
-             inlink=TRUE \linktx:="" \ GOTO 1290
-           ELSE 
-             IF ccode<>34 THEN 
-               linktx:=linktx+CHR$(ccode)
-             ENDIF 
-           ENDIF 
-         ENDIF 
-1214     IF inlink=TRUE THEN 
-           IF ccode=34 THEN 
-             (* FIXME if last chars are 'download', jump to that *)
-             IF LEN(linktx)>1 THEN 
-               GOSUB 1400 \(* add linktx to link file
-               getlink:=FALSE \intag:=FALSE \inlink:=FALSE
-               linktx:=""
-             ENDIF 
-           ENDIF 
-           GOTO 1290
-         ENDIF 
-1216     IF intag=TRUE AND getlink=FALSE THEN 
-           FOR fn4=1 TO 10
-             LOOP 
-               ccode:=PEEK($FF6B)
-             EXITIF ccode>31 AND ccode<128 THEN  \ ENDEXIT 
-             ENDLOOP 
-             tagtx:=tagtx+CHR$(ccode)
-             IF ccode=62 OR tagtx="<table" THEN 
-               GOSUB 1300 \(* dotag 
-               fn3:=fn3+fn4 \(* main loop counter
-               GOTO 1290
-             ENDIF 
-             IF tagtx="<a " THEN 
-               getlink:=TRUE \desctx:=""
-               GOSUB 1310 \ GOTO 1290
-             ENDIF 
-           NEXT fn4
-           linein:=linein+tagtx \(* by now < is not a tag
-           linelen:=linelen+LEN(tagtx) \intag:=FALSE \tagtx:=""
-           GOTO 1290
-         ENDIF 
-       ENDIF  \(* endof 1212 IF intag=TRUE THEN
-1218   IF ccode=60 THEN  \(* tag start? see1216
-         tagtx:="<" \intag:=TRUE
-       ELSE 
-         linein:=linein+CHR$(ccode) \linelen:=linelen+1
-       ENDIF 
-       IF linelen>=scrnf THEN 
-         workstr:=linein
-         FOR fn4=linelen TO 1 STEP -1
-           str:=MID$(workstr,fn4,1)
-           IF str=" " AND fn4<scrnf-2 THEN 
-             PRINT LEFT$(workstr,fn4)
-             lines:=lines+1 \linein:=RIGHT$(workstr,LEN(workstr)-fn4)
-             linelen:=LEN(linein)
-             IF inundl=TRUE THEN 
-               GOSUB 1310 \RUN gfx2("undlnoff") \inundl:=FALSE
-             ENDIF 
-             GOTO 1290
-           ENDIF 
-         NEXT fn4
-       ENDIF 
-       IF lines<scrny THEN 1290
-1220   (* doMenu     
-       IF hasmouse=FALSE THEN 
-         RUN gfx2("curxy",0,23) \RUN gfx2("revon")
-         PRINT "<B>ookmark   <G>oto page   <H>istory   <Enter>next    <L>ink   <Q>uit  "; 
-         RUN gfx2("revoff")
-         LOOP 
-           instr:=""
-           WHILE instr="" DO 
-             RUN bnkey(instr)
-           ENDWHILE 
-           int1:=ASC(instr) \ IF int1>96 THEN  \instr:=CHR$(int1-32) \ ENDIF 
-           int2:=SUBSTR(instr,"bghlq")
-         EXITIF int1=13 OR int2>0 THEN 
-           hotkey:=instr
-         ENDEXIT 
-         ENDLOOP 
-       ELSE 
-         RUN gfx2("curon") \RUN gfx2("gcset",$CA,1)
-         LOOP 
-           LOOP 
-             RUN gfx2("onmouse",0)
-             RUN gfx2("mouse",valid,fire,msx,msy,area,fullx,fully)
-             IF valid=1 THEN  \(* Check keypress before mouse
-               regs.a:=0 \regs.b:=1 \hotkey:=""
-               RUN byscall($8D,regs)
-               IF LAND(regs.cc,1)=0 THEN 
-                 RUN bnkey(hotkey)
-                 IF hotkey<>"" AND ASC(hotkey)>128 THEN 
-                   hotkey=CHR$(ASC(hotkey)-128)
-                   menu_id:=0 \menu_item:=0
-                   menu_item:=SUBSTR(hotkey,"bghl")
-                   IF menu_item>0 THEN 
-                     menu_id:=MId_Book \LpExitFlg:=TRUE
-                   ELSE 
-                     menu_item:=SUBSTR(hotkey,"crnps")
-                     IF menu_item>0 THEN 
-                       menu_id:=MId_Page \LpExitFlg:=TRUE
-                     ENDIF 
-                   ENDIF 
-                 ENDIF 
-               ENDIF 
-               IF fire=1 AND area=0 THEN 
-                 menux:=msx \menuy:=msy \ RETURN 
-               ENDIF  \(* link coords
-             ENDIF 
-             IF fire=1 AND area=1 THEN 
-               RUN gfx2("getsel",menu_id,menu_item)
-               IF menu_id<>0 THEN  \LpExitFlg=TRUE \ ENDIF 
-             ENDIF 
-           EXITIF LpExitFlg=TRUE THEN 
-           ENDEXIT 
-           ENDLOOP 
-           
-           IF menu_id=MId_Book OR SUBSTR(instr,"bghl")>0 THEN 
-             IF menu_item=1 OR hotkey="b" THEN 
-               RUN doBookmark("bookmark.www",-1,bookmark) \ GOTO 1290
-             ENDIF 
-             IF menu_item=2 OR hotkey="g" THEN 
-               RUN doBookmark("bookmark.www",0,bookmark) \ GOSUB 300
-               GOTO 100
-             ENDIF 
-             IF menu_item=3 OR hotkey="h" THEN 
-               RUN doBookmark("history.www",0,bookmark) \ GOSUB 300
-               GOTO 100
-             ENDIF 
-             IF menu_item=4 OR hotkey="l" THEN 
-               RUN doBookmark("link.www",0,bookmark) \ RETURN 
-             ENDIF 
-           ENDIF 
-           IF menu_id=MId_Page OR SUBSTR(instr,"crnps")>0 THEN 
-             IF menu_item=1 OR hotkey="c" THEN 
-               PRINT "Clear form not implimented" \ RETURN 
-             ENDIF 
-             IF menu_item=2 OR hotkey="r" THEN 
-               GOSUB 300 \ GOTO 100
-             ENDIF 
-             IF menu_item=3 OR hotkey="n" THEN 
-               PRINT "New tab not implimented" \ RETURN 
-             ENDIF 
-             IF menu_item=4 OR hotkey="p" THEN 
-               PRINT "Print not implimented" \ RETURN 
-             ENDIF 
-             IF menu_item=5 OR hotkey="s" THEN 
-               PRINT "Save not implimented" \ RETURN 
-             ENDIF 
-           ENDIF 
-           IF menu_id=4 OR hotkey=CHR$(140) THEN 
-             PRINT "Scroll Up not implimented" \ RETURN 
-           ENDIF 
-           IF menu_id=5 OR hotkey=CHR$(138) THEN 
-             PRINT "Scroll Down not implimented" \ RETURN 
-           ENDIF 
-           IF menu_id=6 OR hotkey=CHR$(137) THEN 
-             PRINT "Scroll Right not implimented" \ RETURN 
-           ENDIF 
-           IF menu_id=7 OR hotkey=CHR$(136) THEN 
-             PRINT "Scroll Left not implimented" \ RETURN 
-           ENDIF 
-           IF hotkey=CHR$(13) THEN 
-             RETURN 
-           ENDIF  \(* more text FIXME 
-           IF menu_id=2 OR hotkey="q" THEN 
-             GOSUB 300 \ GOTO 5000
-           ENDIF 
-         ENDLOOP 
-       ENDIF 
-       IF menucall=0 THEN  \(* if no call, check for link array
-         IF menux+menuy>0 THEN 
-           FOR fn1=1 TO 16
-             FOR fn2=1 TO 2
-               IF menuy=lypos(fn1,fn2) THEN 
-                 IF menux>=lxstart(fn1,fn2) AND menux<=lxend(fn1,fn2) THEN 
-                   RUN doBookmark("link.www",fn1,bookmark)
-                   RUN gotoHost(bookmark)
-                   GOTO 200
-                 ENDIF 
-               ENDIF 
-             NEXT fn2
-           NEXT fn1
-         ENDIF 
-       ENDIF 
-       
-1290   RUN gfx2("gcset",0,0)
-     NEXT fn3
-     RETURN  \(* end parser main loop 
-     END 
-     
-1300 (* dotag 
-     IF tagtx="<title>" OR tagtx="<TITLE>" THEN 
-       RUN gfx2("clear") \RUN gfx2("revon")
-       lines:=1 \ GOSUB 1310
-     ENDIF 
-     IF tagtx="</title>" OR tagtx="</TITLE>" THEN 
-       bookmark.title:=LEFT$(linein,scrnx)
-       lines:=lines+1 \ GOSUB 1320
-       RUN gfx2("revoff")
-     ENDIF 
-     IF tagtx="<p>" OR tagtx="<P>" OR tagtx="</p>" OR tagtx="</P>" THEN 
-       GOSUB 1320
-     ENDIF 
-     IF tagtx="<br>" OR tagtx="<BR>" THEN 
-       GOSUB 1320
-     ENDIF 
-     IF tagtx="<b>" OR tagtx="<B>" THEN 
-       GOSUB 1310 \RUN gfx2("boldsw","ON")
-     ELSE 
-       IF tagtx="<i>" OR tagtx="<I>" THEN 
-         GOSUB 1310 \RUN gfx2("propsw","ON")
-       ENDIF 
-     ENDIF 
-     IF tagtx="</b>" OR tagtx="</B>" THEN 
-       GOSUB 1310 \RUN gfx2("boldsw","OFF")
-     ELSE 
-       IF tagtx="</i>" OR tagtx="</I>" THEN 
-         GOSUB 1310 \RUN gfx2("propsw","OFF")
-       ENDIF 
-     ENDIF 
-     IF LEFT$(tagtx,2)="<h" OR LEFT$(tagtx,2)="<H" THEN 
-       GOSUB 1310
-       IF RIGHT$(tagtx,2)="1>" THEN 
-         PRINT  \RUN gfx2("revon")
-       ENDIF 
-       IF RIGHT$(tagtx,2)="2>" THEN 
-         PRINT  \RUN gfx2("boldsw","OFF")
-       ENDIF 
-       IF RIGHT$(tagtx,2)="3>" THEN 
-         PRINT  \RUN gfx2("font",200,2)
-         RUN gfx2("revon")
-       ENDIF 
-       IF RIGHT$(tagtx,2)="4>" THEN 
-         PRINT  \RUN gfx2("font",200,2)
-       ENDIF 
-       IF RIGHT$(tagtx,2)="5>" THEN 
-         PRINT  \RUN gfx2("font",200,2) \RUN gfx2("boldsw","ON")
-       ENDIF 
-       IF RIGHT$(tagtx,2)="6>" THEN 
-         PRINT  \RUN gfx2("font",200,2)
-       ENDIF 
-     ENDIF 
-     
-     IF LEFT$(tagtx,3)="</h" OR LEFT$(tagtx,3)="</H" THEN 
-       GOSUB 1310 \lines:=lines+1
-       IF RIGHT$(tagtx,2)="1>" THEN 
-         RUN gfx2("revoff")
-       ENDIF 
-       IF RIGHT$(tagtx,2)="2>" THEN 
-         RUN gfx2("boldsw","OFF")
-       ENDIF 
-       IF RIGHT$(tagtx,2)="3>" THEN 
-         RUN gfx2("font",200,1) \RUN gfx2("revoff")
-       ENDIF 
-       IF RIGHT$(tagtx,2)="4>" THEN 
-         RUN gfx2("font",200,1)
-       ENDIF 
-       IF RIGHT$(tagtx,2)="5>" THEN 
-         RUN gfx2("font",200,1) \RUN gfx2("boldsw","OFF")
-       ENDIF 
-       IF RIGHT$(tagtx,2)="6>" THEN 
-         RUN gfx2("font",200,1)
-       ENDIF 
-     ENDIF 
-     IF LEFT$(tagtx,6)="<table" THEN 
-       RUN drawTable(scrnf,scrny,lines)
-     ENDIF 
-     IF tagtx="</html>" OR tagtx="</HTML>" THEN 
-       fn3:=segment
-       GOTO 1220
-     ELSE 
-       (* eat the tag, recognized or not
-       tagtx:="" \intag:=FALSE
-       RETURN 
-     ENDIF 
-     
-1310 (* print and continue line
-     PRINT linein;  \linein:=""
-     RETURN 
-     
-1320 (* print and end line
-     PRINT linein \linein:="" \linelen:=0 \lines:=lines+1
-     RETURN 
-     
-1330 (* set colors
-     RUN gfx2("palette",0,0) \RUN gfx2("palette",1,7)
-     RUN gfx2("palette",2,56) \RUN gfx2("palette",3,63)
-     RETURN 
-     
-1400 (* ______________________________________________ link store
-     recnum:=recnum+1
-     urlstr:=linktx \linein:="" \int1:=0
-     lxstart(recnum,1):=linelen \lypos(recnum,1):=lines \(* current x,y
-     RUN gfx2("UNDLNON") \inundl:=TRUE
-     LOOP 
-       int1:=int1+1 \ccode:=PEEK($FF6B)
-       desctx:=desctx+CHR$(ccode) \linein:=linein+CHR$(ccode)
-     EXITIF LEN(linein)>4 AND RIGHT$(linein,4)="</a>" THEN 
-       descstr:=MID$(desctx,2,LEN(desctx)-5)
-     ENDEXIT 
-     ENDLOOP 
-     inlink:=FALSE \getlink:=FALSE \intag:=FALSE
-     IF linelen<scrnf-2 THEN 
-       linein:=MID$(linein,2,LEN(linein)-5)
-       linelen:=linelen+LEN(linein) \ GOSUB 1310
-       RUN gfx2("undlnoff") \inundl:=FALSE \lxend(recnum,1):=linelen
-     ELSE 
-       lxend(recnum,1):=scrnx-1
-       lxstart(recnum,2):=1 \lxend(fn4,2):=linelen-scrnf-2
-       lypos(recnum,2):=lines+1 \linktx:=""
-     ENDIF 
-     bookmark.page:=urlstr \bookmark.title=descstr
-     RUN doBookmark("link.www",-1,bookmark)
-     RETURN 
-     
-1500 (* debug - dump page src
-     int1:=INT(raddr/256) \int2:=raddr-256*int1
-     POKE $FF69,int1 \ POKE $FF6A,int2
-     workstr:="       "
-     FOR fn3=segstart TO segment
-       ccode:=PEEK($FF6B)
-       IF ccode>31 AND ccode<128 THEN 
-         PRINT CHR$(ccode); 
-         tagtx:=RIGHT$(workstr,6)+CHR$(ccode)
-         workstr:=tagtx
-         IF tagtx="</html>" OR tagtx="</HTML>" THEN 
-           fn3:=segment
-           GOTO 1220
-         ENDIF 
-       ENDIF 
-       IF ccode=13 THEN  \ PRINT  \ ENDIF 
-     NEXT fn3
-     RETURN 
-     
-5000 RUN gfx2("gcset",0,0)
-     PRINT 
-     END 
+      (* Worst Web Wrangler 2/3/24
+      (* assuming 2k  TX  & RX buffer
+      (* Requires 'frobio' https://github.com/strickyak/frobio/
+      (* also the packed procedures host, ifup, ifconfig
+      (* AND local procs getdns, gotoHost, doBookmark,  drawTable
+      
+      TYPE bookmarks=server,page,title:STRING[144]
+      DIM bookmark:bookmarks
+      TYPE registers=cc,a,b,dp:BYTE; x,y,u:INTEGER
+      DIM regs:registers
+      DIM debug,header,intag,inlink,intitle,inundl:BOOLEAN
+      DIM getlink,hasmouse,LpExitFlg:BOOLEAN
+      DIM lxstart(16,2),lxend(16,2),lypos(16,2):BYTE
+      DIM menu_id,menu_item,MId_Book,MId_Page:INTEGER
+      DIM valid,fire,msx,msy,area:INTEGER
+      DIM recnum,reclen,ccode,menucall,menux,menuy:INTEGER
+      DIM int1,int2,int3,int4,fn1,fn2,fn3,fn4:INTEGER
+      DIM tryct,linkct,segment,segstart,soc1,soc2:INTEGER
+      DIM xcur,ycur,linelen,lines,scrnf,tblno:INTEGER
+      DIM raddr,rbase,rend,rmask,roff,rsize,rptr:INTEGER
+      DIM hotkey,instr:STRING[1]
+      DIM stdmenus(32):STRING[16]
+      DIM wd(3),m1(4),m2(5),str:STRING
+      DIM desctx,filename,linktx,tagtx,titletx,descstr,urlstr:STRING[80]
+      DIM linein,workstr:STRING[144]
+      (* _____ setup 
+      debug:=FALSE
+      scrnx:=80 \scrny:=22 \scrnf:=106 \(* FIXME should be selectable
+      soc1:=$05 \soc2:=$07 \(* FIXME should be selectable
+      (* _____ end setup 
+      MId_Book:=33 \MId_Page:=34
+      lines:=0 \tryct:=1 \linkct:=0 \recnum:=0 \segstart:=0
+      linktx:="" \titletx:="" \menux:=0 \menuy:=0 \tblno:=1
+      header:=TRUE \intag:=FALSE \inundl:=FALSE
+      inlink:=FALSE \intitle:=FALSE \getlink:=FALSE
+      RUN gfx2("clear") \instr:="" \hasmouse:=TRUE
+      GOTO 10 \(* FIXME remove for prod
+      PRINT "Hires mouse or keyboard(m/k)?"; 
+      WHILE instr="" DO  \RUN INKEY(instr) \ ENDWHILE 
+      IF instr="k" THEN  \hasmouse:=FALSE \ ENDIF 
+ 10   IF hasmouse=TRUE THEN 
+        RUN gfx2("dwend") \RUN gfx2("dwset",7,0,0,80,25,0,3,0)
+        GOSUB 1330 \(* set color
+        RUN gfx2("gcset",$CA,1) \RUN gfx2("setmouse",3,255,1)
+        RUN gfx2("title",wd,"www",40,10,2)
+        (* config disable/enable, set last # to 0/1
+        RUN gfx2("menu",wd,1,"Bookmark",MId_Book,10,4,m1,1)
+        RUN gfx2("item",m1,1,"<B>M this",1)
+        RUN gfx2("item",m1,2,"<G>oto BM",1)
+        RUN gfx2("item",m1,3,"<M>anage BM",0)
+        RUN gfx2("item",m1,4,"<L>inks",1)
+        RUN gfx2("menu",wd,2,"Page",MId_Page,10,5,m2,1)
+        RUN gfx2("item",m2,1,"<C>lear",1)
+        RUN gfx2("item",m2,2,"<R>eload",1)
+        RUN gfx2("item",m2,3,"<H>istory",1)
+        RUN gfx2("item",m2,4,"<P>rint",0)
+        RUN gfx2("item",m2,5,"<S>ave",0)
+        RUN gfx2("color",2,0,2) \RUN gfx2("font",$C8,1)
+        RUN gfx2("wnset",2,wd) \RUN gfx2("curoff")
+        RUN gfx2("color",0,2) \RUN gfx2("font",$C8,$32)
+        LpExitFlg=FALSE
+      ENDIF 
+      RUN gfx2("clear") \ PRINT "Starting network..." \ SHELL "ifup"
+      RUN gfx2("clear")
+      bookmark.server:="" \bookmark.page:="" \bookmark.title:=""
+ 15   RUN doBookmark("bookmark.www",0,bookmark)
+      POKE $FF69,soc1 \ POKE $FF6A,$00 \ POKE $FF6B,$01 \(* TCP mode
+      ON ERROR GOTO 100
+      SHELL "del /dd/sys/link.www"
+ 100  ON ERROR  \RUN gotoHost(bookmark,soc1)
+ 200  (* start of read page
+      IF debug=TRUE THEN  \ PRINT "Waiting for data";  \ ENDIF 
+      LOOP 
+        REPEAT 
+          POKE $FF69,soc1 \ POKE $FF6A,$26 \(* Sn_RX_RSR
+          rsize:=PEEK($FF6B)*256+PEEK($FF6B)
+          IF debug=TRUE THEN  \ PRINT ".";  \ ENDIF 
+          RUN INKEY(instr) \ IF instr<>"" THEN 1220
+        UNTIL rsize<>0
+        segment:=rsize
+        RUN doBookmark("history.www",-1,bookmark)
+        POKE $FF69,soc1 \ POKE $FF6A,$1E \(* Sn_RXBUF_SIZE
+        int1:=PEEK($FF6B)*256+PEEK($FF6B)
+        rbase:=int1*1024+$6000
+        rmask:=1024*int1-1 \rmax:=int1*1024
+        POKE $FF69,soc1 \ POKE $FF6A,$26 \(* Sn_RX_RSR
+        rsize:=PEEK($FF6B)*256+PEEK($FF6B)
+        POKE $FF69,soc1 \ POKE $FF6A,$28 \(* Sn_RX_RD
+        rptr:=PEEK($FF6B)*256+PEEK($FF6B)
+        int1:=INT(rptr/256) \int2:=rptr-256*int1
+        int3:=INT(rmask/256) \int4:=rmask-256*int3
+        int1:=LAND(int1,int3) \int2:=LAND(int2,int4)
+        roff:=int1*256+int2+rbase \raddr:=rbase+roff
+        IF roff+rsize>rend THEN  \(* partial frame
+          segment:=rmax-roff
+          linelen:=0 \linein:=""
+          IF debug=TRUE THEN  \ GOSUB 1500
+          ELSE  \ GOSUB 1200
+          ENDIF 
+          raddr:=rbase \segment:=rsize-rend
+          linelen:=LEN(linein) \(* keep unparsed end
+          IF debug=TRUE THEN  \ GOSUB 1500
+          ELSE  \ GOSUB 1200
+          ENDIF 
+        ELSE 
+          segment:=rsize \(* copy all data
+          linelen:=0 \linein:=""
+          IF debug=TRUE THEN  \ GOSUB 1500
+          ELSE  \ GOSUB 1200
+          ENDIF 
+        ENDIF 
+        (* _____ end of a frame. set Sn_RX_RD to last addr read
+        POKE $FF69,soc1 \ POKE $FF6A,$28
+        rptr:=PEEK($FF6B)*256+PEEK($FF6B)+rsize
+        POKE $FF69,soc1 \ POKE $FF6A,$28
+        int1:=INT(rptr/256) \int2:=rptr-256*int1
+        POKE $FF6B,int1 \ POKE $FF6B,int2
+        POKE $FF69,soc1 \ POKE $FF6A,$01 \ POKE $FF6B,$40 \(* set Sn_CR to RECV  
+      ENDLOOP 
+      
+ 300  (* send disconnect, verify
+      ON ERROR GOTO 301
+      FOR fn4=1 TO 9
+        filename:="/dd/SYS/table_"+CHR$(fn4)+".www"
+        SHELL "del filename"
+      NEXT fn4
+ 301  POKE $FF69,soc1 \ POKE $FF6A,$01 \ POKE $FF6B,$08
+      LOOP 
+        POKE $FF69,soc1 \ POKE $FF6A,$03
+        (* DB 1008 often fails to 0?  ***FIXME***
+        (* int1:=PEEK($FF6B)
+        int1=$18
+      EXITIF int1=$18 THEN 
+        header:=TRUE
+      ENDEXIT 
+      ENDLOOP 
+      RETURN 
+      
+ 1200 (* html parserette 
+      int1:=INT(raddr/256) \int2:=raddr-256*int1
+      POKE $FF69,int1 \ POKE $FF6A,int2
+      (* check for error, else eat header
+      IF header=TRUE THEN 
+        charnp:=0
+        FOR fn1=1 TO segment
+          LOOP 
+            ccode:=PEEK($FF6B)
+          EXITIF ccode>31 AND ccode<128 THEN 
+          ENDEXIT 
+          ENDLOOP 
+          IF ccode=60 THEN  \(* close tag = end of header
+            header:=FALSE \intag:=TRUE
+            tagtx:="<" \segstart:=fn1 \linelen:=0
+            GOTO 1208
+          ENDIF 
+          IF fn1=10 THEN 
+            IF ccode=52 THEN  \(* 4 here = 4xx error code
+              IF tryct<6 THEN 
+                tryct:=tryct+1 \ GOTO 100
+              ENDIF 
+              GOTO 1220 \(* main menu - did we die?
+            ENDIF 
+          ENDIF 
+        NEXT fn1
+      ENDIF 
+ 1208 FOR fn3=segstart TO segment \(* read the page
+        ccode:=PEEK($FF6B)
+        IF ccode<32 OR ccode>127 THEN 1290
+ 1210   IF intitle=TRUE THEN 
+          titletx:=titletx+CHR$(ccode)
+        ENDIF 
+ 1212   IF intag=TRUE THEN 
+          tagtx:=tagtx+CHR$(ccode)
+          IF getlink=TRUE THEN 
+            IF RIGHT$(linktx,5)="href=" OR RIGHT$(linktx,5)="HREF="
+             THEN 
+              inlink=TRUE \linktx:="" \ GOTO 1290
+            ELSE 
+              IF ccode<>34 THEN 
+                linktx:=linktx+CHR$(ccode)
+              ENDIF 
+            ENDIF 
+          ENDIF 
+ 1214     IF inlink=TRUE THEN 
+            IF ccode=34 THEN 
+              (* FIXME if last chars are 'download', jump to that *)
+              IF LEN(linktx)>1 THEN 
+                GOSUB 1400 \(* add linktx to link file
+                getlink:=FALSE \intag:=FALSE \inlink:=FALSE
+                linktx:=""
+              ENDIF 
+            ENDIF 
+            GOTO 1290
+          ENDIF 
+ 1216     IF intag=TRUE AND getlink=FALSE THEN 
+            FOR fn4=1 TO 10
+              LOOP 
+                ccode:=PEEK($FF6B)
+              EXITIF ccode>31 AND ccode<128 THEN  \ ENDEXIT 
+              ENDLOOP 
+              tagtx:=tagtx+CHR$(ccode)
+              IF ccode=62 OR tagtx="<table" THEN 
+                GOSUB 1300 \(* dotag 
+                fn3:=fn3+fn4 \(* main loop counter
+                GOTO 1290
+              ENDIF 
+              IF tagtx="<a " THEN 
+                getlink:=TRUE \desctx:=""
+                GOSUB 1310 \ GOTO 1290
+              ENDIF 
+            NEXT fn4
+            linein:=linein+tagtx \(* by now < is not a tag
+            linelen:=linelen+LEN(tagtx) \intag:=FALSE \tagtx:=""
+            GOTO 1290
+          ENDIF 
+        ENDIF  \(* endof 1212 IF intag=TRUE THEN
+ 1218   IF ccode=60 THEN  \(* tag start? see1216
+          tagtx:="<" \intag:=TRUE
+        ELSE 
+          linein:=linein+CHR$(ccode) \linelen:=linelen+1
+        ENDIF 
+        IF linelen>=scrnf THEN 
+          workstr:=linein
+          FOR fn4=linelen TO 1 STEP -1
+            str:=MID$(workstr,fn4,1)
+            IF str=" " AND fn4<scrnf-2 THEN 
+              PRINT LEFT$(workstr,fn4)
+              lines:=lines+1 \linein:=RIGHT$(workstr,LEN(workstr)-fn4)
+              linelen:=LEN(linein)
+              IF inundl=TRUE THEN 
+                GOSUB 1310 \RUN gfx2("undlnoff") \inundl:=FALSE
+              ENDIF 
+              GOTO 1290
+            ENDIF 
+          NEXT fn4
+        ENDIF 
+        IF lines<scrny THEN 1290
+ 1220   (* doMenu     
+        IF hasmouse=FALSE THEN 
+          RUN gfx2("curxy",0,23) \RUN gfx2("revon")
+          PRINT "<B>ookmark   <G>oto page   <H>istory   <Enter>next    <L>ink   <Q>uit  "; 
+          RUN gfx2("revoff")
+          LOOP 
+            instr:=""
+            WHILE instr="" DO 
+              RUN INKEY(instr)
+            ENDWHILE 
+            int1:=ASC(instr) \ IF int1>96 THEN  \instr:=CHR$(int1-32) \ ENDIF 
+            int2:=SUBSTR(instr,"bghlq")
+          EXITIF int1=13 OR int2>0 THEN 
+            hotkey:=instr
+          ENDEXIT 
+          ENDLOOP 
+        ELSE 
+          RUN gfx2("curon") \RUN gfx2("gcset",$CA,1)
+          LOOP 
+            LOOP 
+              RUN gfx2("onmouse",0)
+              RUN gfx2("mouse",valid,fire,msx,msy,area,fullx,fully)
+              IF valid=1 THEN  \(* Check keypress before mouse
+                regs.a:=0 \regs.b:=1 \hotkey:=""
+                RUN syscall($8D,regs)
+                IF LAND(regs.cc,1)=0 THEN 
+                  RUN INKEY(hotkey)
+                  IF hotkey<>"" AND ASC(hotkey)>128 THEN 
+                    hotkey=CHR$(ASC(hotkey)-128)
+                    menu_id:=0 \menu_item:=0
+                    menu_item:=SUBSTR(hotkey,"bghl")
+                    IF menu_item>0 THEN 
+                      menu_id:=MId_Book \LpExitFlg:=TRUE
+                    ELSE 
+                      menu_item:=SUBSTR(hotkey,"crnps")
+                      IF menu_item>0 THEN 
+                        menu_id:=MId_Page \LpExitFlg:=TRUE
+                      ENDIF 
+                    ENDIF 
+                  ENDIF 
+                ENDIF 
+                IF fire=1 AND area=0 THEN 
+                  menux:=msx \menuy:=msy \ RETURN 
+                ENDIF  \(* link coords
+              ENDIF 
+              IF fire=1 AND area=1 THEN 
+                RUN gfx2("getsel",menu_id,menu_item)
+                IF menu_id<>0 THEN  \LpExitFlg=TRUE \ ENDIF 
+              ENDIF 
+            EXITIF LpExitFlg=TRUE THEN 
+            ENDEXIT 
+            ENDLOOP 
+            
+            IF menu_id=MId_Book OR SUBSTR(instr,"bghl")>0 THEN 
+              IF menu_item=1 OR hotkey="b" THEN 
+                RUN doBookmark("bookmark.www",-1,bookmark) \ GOTO
+                 1290
+              ENDIF 
+              IF menu_item=2 OR hotkey="g" THEN 
+                GOSUB 300
+                RUN doBookmark("bookmark.www",0,bookmark)
+                GOTO 100
+              ENDIF 
+              IF menu_item=3 OR hotkey="h" THEN 
+                GOSUB 300
+                RUN doBookmark("history.www",0,bookmark)
+                GOTO 100
+              ENDIF 
+              IF menu_item=4 OR hotkey="l" THEN 
+                RUN doBookmark("link.www",0,bookmark) \ RETURN 
+              ENDIF 
+            ENDIF 
+            IF menu_id=MId_Page OR SUBSTR(instr,"crnps")>0 THEN 
+              IF menu_item=1 OR hotkey="c" THEN 
+                PRINT "Clear form not implimented" \ RETURN 
+              ENDIF 
+              IF menu_item=2 OR hotkey="r" THEN 
+                GOSUB 300 \ GOTO 100
+              ENDIF 
+              IF menu_item=3 OR hotkey="n" THEN 
+                PRINT "New tab not implimented" \ RETURN 
+              ENDIF 
+              IF menu_item=4 OR hotkey="p" THEN 
+                PRINT "Print not implimented" \ RETURN 
+              ENDIF 
+              IF menu_item=5 OR hotkey="s" THEN 
+                PRINT "Save not implimented" \ RETURN 
+              ENDIF 
+            ENDIF 
+            IF menu_id=4 OR hotkey=CHR$(140) THEN 
+              PRINT "Scroll Up not implimented" \ RETURN 
+            ENDIF 
+            IF menu_id=5 OR hotkey=CHR$(138) THEN 
+              PRINT "Scroll Down not implimented" \ RETURN 
+            ENDIF 
+            IF menu_id=6 OR hotkey=CHR$(137) THEN 
+              PRINT "Scroll Right not implimented" \ RETURN 
+            ENDIF 
+            IF menu_id=7 OR hotkey=CHR$(136) THEN 
+              PRINT "Scroll Left not implimented" \ RETURN 
+            ENDIF 
+            IF hotkey=CHR$(13) THEN 
+              RETURN 
+            ENDIF  \(* more text FIXME 
+            IF menu_id=2 OR hotkey="q" THEN 
+              GOSUB 300 \ GOTO 5000
+            ENDIF 
+          ENDLOOP 
+        ENDIF 
+        IF menucall=0 THEN  \(* if no call, check for link array
+          IF menux+menuy>0 THEN 
+            FOR fn1=1 TO 16
+              FOR fn2=1 TO 2
+                IF menuy=lypos(fn1,fn2) THEN 
+                  IF menux>=lxstart(fn1,fn2) AND menux<=lxend(fn1,fn2) THEN 
+                    RUN doBookmark("link.www",fn1,bookmark)
+                    RUN gotoHost(bookmark,soc1)
+                    GOTO 200
+                  ENDIF 
+                ENDIF 
+              NEXT fn2
+            NEXT fn1
+          ENDIF 
+        ENDIF 
+        
+ 1290   RUN gfx2("gcset",0,0)
+      NEXT fn3
+      RETURN  \(* end parser main loop 
+      END 
+      
+ 1300 (* dotag 
+      IF tagtx="<title>" OR tagtx="<TITLE>" THEN 
+        RUN gfx2("clear") \RUN gfx2("revon")
+        lines:=1 \ GOSUB 1310
+      ENDIF 
+      IF tagtx="</title>" OR tagtx="</TITLE>" THEN 
+        bookmark.title:=LEFT$(linein,scrnx)
+        lines:=lines+1 \ GOSUB 1320
+        RUN gfx2("revoff")
+      ENDIF 
+      IF tagtx="<p>" OR tagtx="<P>" OR tagtx="</p>" OR tagtx="</P>" THEN 
+        GOSUB 1320
+      ENDIF 
+      IF tagtx="<br>" OR tagtx="<BR>" THEN 
+        GOSUB 1320
+      ENDIF 
+      IF tagtx="<b>" OR tagtx="<B>" THEN 
+        GOSUB 1310 \RUN gfx2("boldsw","ON")
+      ELSE 
+        IF tagtx="<i>" OR tagtx="<I>" THEN 
+          GOSUB 1310 \RUN gfx2("propsw","ON")
+        ENDIF 
+      ENDIF 
+      IF tagtx="</b>" OR tagtx="</B>" THEN 
+        GOSUB 1310 \RUN gfx2("boldsw","OFF")
+      ELSE 
+        IF tagtx="</i>" OR tagtx="</I>" THEN 
+          GOSUB 1310 \RUN gfx2("propsw","OFF")
+        ENDIF 
+      ENDIF 
+      IF LEFT$(tagtx,2)="<h" OR LEFT$(tagtx,2)="<H" THEN 
+        GOSUB 1310
+        IF RIGHT$(tagtx,2)="1>" THEN 
+          PRINT  \RUN gfx2("revon")
+        ENDIF 
+        IF RIGHT$(tagtx,2)="2>" THEN 
+          PRINT  \RUN gfx2("boldsw","OFF")
+        ENDIF 
+        IF RIGHT$(tagtx,2)="3>" THEN 
+          PRINT  \RUN gfx2("font",200,2)
+          RUN gfx2("revon")
+        ENDIF 
+        IF RIGHT$(tagtx,2)="4>" THEN 
+          PRINT  \RUN gfx2("font",200,2)
+        ENDIF 
+        IF RIGHT$(tagtx,2)="5>" THEN 
+          PRINT  \RUN gfx2("font",200,2) \RUN gfx2("boldsw","ON")
+        ENDIF 
+        IF RIGHT$(tagtx,2)="6>" THEN 
+          PRINT  \RUN gfx2("font",200,2)
+        ENDIF 
+      ENDIF 
+      
+      IF LEFT$(tagtx,3)="</h" OR LEFT$(tagtx,3)="</H" THEN 
+        GOSUB 1310 \lines:=lines+1
+        IF RIGHT$(tagtx,2)="1>" THEN 
+          RUN gfx2("revoff")
+        ENDIF 
+        IF RIGHT$(tagtx,2)="2>" THEN 
+          RUN gfx2("boldsw","OFF")
+        ENDIF 
+        IF RIGHT$(tagtx,2)="3>" THEN 
+          RUN gfx2("font",200,1) \RUN gfx2("revoff")
+        ENDIF 
+        IF RIGHT$(tagtx,2)="4>" THEN 
+          RUN gfx2("font",200,1)
+        ENDIF 
+        IF RIGHT$(tagtx,2)="5>" THEN 
+          RUN gfx2("font",200,1) \RUN gfx2("boldsw","OFF")
+        ENDIF 
+        IF RIGHT$(tagtx,2)="6>" THEN 
+          RUN gfx2("font",200,1)
+        ENDIF 
+      ENDIF 
+      IF LEFT$(tagtx,6)="<table" THEN 
+        filename:="table_"+CHR$(tblno)+".www"
+        RUN drawTable(filename,scrnf,scrny,lines)
+        tblno:=tblno+1
+      ENDIF 
+      IF tagtx="</html>" OR tagtx="</HTML>" THEN 
+        fn3:=segment
+        GOTO 1220
+      ELSE 
+        (* eat the tag, recognized or not
+        tagtx:="" \intag:=FALSE
+        RETURN 
+      ENDIF 
+      
+ 1310 (* print and continue line
+      PRINT linein;  \linein:=""
+      RETURN 
+      
+ 1320 (* print and end line
+      PRINT linein \linein:="" \linelen:=0 \lines:=lines+1
+      RETURN 
+      
+ 1330 (* set colors
+      RUN gfx2("palette",0,0) \RUN gfx2("palette",1,7)
+      RUN gfx2("palette",2,56) \RUN gfx2("palette",3,63)
+      RETURN 
+      
+ 1400 (* ______________________________________________ link store
+      recnum:=recnum+1
+      urlstr:=linktx \linein:="" \int1:=0
+      lxstart(recnum,1):=linelen \lypos(recnum,1):=lines \(* current x,y
+      RUN gfx2("UNDLNON") \inundl:=TRUE
+      LOOP 
+        int1:=int1+1 \ccode:=PEEK($FF6B)
+        desctx:=desctx+CHR$(ccode) \linein:=linein+CHR$(ccode)
+      EXITIF LEN(linein)>4 AND RIGHT$(linein,4)="</a>" THEN 
+        descstr:=MID$(desctx,2,LEN(desctx)-5)
+      ENDEXIT 
+      ENDLOOP 
+      inlink:=FALSE \getlink:=FALSE \intag:=FALSE
+      IF linelen<scrnf-2 THEN 
+        linein:=MID$(linein,2,LEN(linein)-5)
+        linelen:=linelen+LEN(linein) \ GOSUB 1310
+        RUN gfx2("undlnoff") \inundl:=FALSE \lxend(recnum,1):=linelen
+      ELSE 
+        lxend(recnum,1):=scrnx-1
+        lxstart(recnum,2):=1 \lxend(fn4,2):=linelen-scrnf-2
+        lypos(recnum,2):=lines+1 \linktx:=""
+      ENDIF 
+      bookmark.page:=urlstr \bookmark.title=descstr
+      RUN doBookmark("link.www",-1,bookmark)
+      RETURN 
+      
+ 1500 (* debug - dump page src
+      int1:=INT(raddr/256) \int2:=raddr-256*int1
+      POKE $FF69,int1 \ POKE $FF6A,int2
+      workstr:="       "
+      FOR fn3=segstart TO segment
+        ccode:=PEEK($FF6B)
+        IF ccode>31 AND ccode<128 THEN 
+          PRINT CHR$(ccode); 
+          tagtx:=RIGHT$(workstr,6)+CHR$(ccode)
+          workstr:=tagtx
+          IF tagtx="</html>" OR tagtx="</HTML>" THEN 
+            fn3:=segment
+            GOTO 1220
+          ENDIF 
+        ENDIF 
+        IF ccode=13 THEN  \ PRINT  \ ENDIF 
+      NEXT fn3
+      RETURN 
+      
+ 5000 RUN gfx2("gcset",0,0)
+      PRINT 
+      END 

@@ -1,0 +1,136 @@
+PROCEDURE drawtable
+      (* drawTable - parse HTML table 08/31/23 - restart 2/1/24
+      TYPE table=celldat:STRING[160]; meta1,meta2:INTEGER
+      DIM tcell:table
+      DIM debug:BOOLEAN
+      DIM path:BYTE
+      DIM ccode,cols,maxcols,rows,reclen,rectot,int1,int2,int3,fn1,fn2:INTEGER
+      DIM colsz(8),maxsz(8),percent(8):INTEGER
+      DIM celltx,instr,tabtx:STRING[160]
+      DIM spacr:STRING[40]
+      PARAM filename:STRING[80]; scrnf,scrny,lines:INTEGER
+      rectot:=0
+      spacr:="                                        "
+      FOR fn1=1 TO 8
+        percent(fn1):=0
+      NEXT fn1
+      debug:=FALSE
+      ON ERROR GOTO 10
+      OPEN #path,"/dd/SYS/filename.www":READ
+      GOTO 100 \(* print from file
+      
+ 10   ON ERROR 
+      CREATE #path,"/dd/SYS/filename.www":UPDATE
+      tcell.celldat:="col,row"
+      tcell.meta1:=1 \tcell.meta2:=1
+      cols:=1 \rows:=1
+      SEEK #path,0 \ PUT #path,tcell
+      LOOP 
+        ccode:=PEEK($FF6B)
+      EXITIF ccode=62 THEN 
+      ENDEXIT 
+      ENDLOOP 
+      tabtx:=""
+      LOOP 
+        LOOP 
+          ccode:=PEEK($FF6B)
+        EXITIF ccode>31 AND ccode<128 THEN 
+        ENDEXIT 
+        ENDLOOP 
+        tabtx:=tabtx+CHR$(ccode)
+        IF debug=TRUE THEN 
+          PRINT "debugDT1 tabtx: "; tabtx
+        ENDIF 
+ 20     IF RIGHT$(tabtx,1)=">" THEN 
+          int1:=LEN(tabtx)
+          celltx:=LEFT$(tabtx,int1-(int1-SUBSTR("<",tabtx))-1)
+          tabtx:=RIGHT$(tabtx,int1-SUBSTR("<",tabtx)+1)
+          IF debug=TRUE THEN 
+            PRINT "debugDT2 tags: "; celltx; " "; tabtx
+            PAUSE 
+          ENDIF 
+          IF LEFT$(tabtx,3)="<tr" THEN 
+            tabtx:=""
+          ENDIF 
+          IF LEFT$(tabtx,3)="<th" THEN 
+            int1:=SUBSTR("width",tabtx) \(* user col width
+            IF int1>0 THEN 
+              int1:=int1+6
+              int2:=SUBSTR("%",tabtx)-int1
+              percent(cols):=VAL(MID$(tabtx,int1,int2))
+              tabtx:=""
+            ENDIF 
+          ENDIF 
+          IF RIGHT$(tabtx,4)="<td>" THEN 
+            tabtx:=""
+          ENDIF 
+          IF RIGHT$(tabtx,5)="</td>" OR RIGHT$(tabtx,5)="</th>" THEN
+            IF rows=1 THEN  \maxcols:=cols \ ENDIF 
+            tcell.celldat:=celltx \tcell.meta1:=cols \tcell.meta2:=rows
+            SEEK #path,(rectot+1)*SIZE(tcell) \ PUT #path,tcell
+            tcell.celldat:="col,row" \tcell.meta1:=maxcols \tcell.meta2:=rows
+            SEEK #path,0 \ PUT #path,tcell
+            IF cols<9 THEN cols:=cols+1 \ ENDIF 
+            rectot:=rectot+1 \tabtx:=""
+          ENDIF 
+          IF RIGHT$(tabtx,5)="</tr>" THEN 
+            tabtx:="" \cols:=1 \rows:=rows+1
+          ENDIF 
+        ENDIF 
+      EXITIF RIGHT$(tabtx,8)="</table>" THEN 
+      ENDEXIT 
+      ENDLOOP 
+      
+ 100  (* draw from file     
+      IF debug=TRUE THEN 1000
+      int1:=0 \int2:=maxcols
+      FOR fn1=1 TO maxcols
+        IF percent(fn1)>0 THEN 
+          colsz(fn1):=INT(scrnf-percent(fn1)/100)
+          int1:=int1+colsz(fn1) \int2:=int2-1
+        ENDIF 
+      NEXT fn1
+      int3:=INT((scrnf-int1)/int2)
+      FOR fn1=1 TO maxcols
+        IF percent(fn1)=0 THEN 
+          colsz(fn1):=int3
+        ENDIF 
+      NEXT fn1
+      
+      FOR fn1=1 TO rows
+        IF cury=scrny THEN 
+          RUN gfx2("revon") \ PRINT "Press a key to scroll"; 
+          RUN gfx2("revoff")
+          instr:=""
+          WHILE instr="" DO 
+            RUN INKEY(instr)
+          ENDWHILE 
+        ENDIF 
+        FOR fn2=1 TO maxcols
+          IF fn2>1 THEN 
+            curx:=curx+colsz(fn2-1)
+          ELSE 
+            curx:=0
+          ENDIF 
+          cury:=fn1+lines
+          seak:=(fn1-1)*cols+fn2
+          SEEK #path,seak*SIZE(tcell) \ GET #path,tcell
+          PRINT TAB(curx); LEFT$(tcell.celldat,colsz(fn2)); 
+        NEXT fn2
+        PRINT  \curx:=0
+      NEXT fn1
+      CLOSE #path
+      END 
+      
+ 1000 PRINT " debugDT3: cols,rows "; cols; " "; rows
+      FOR fn1=1 TO rows
+        FOR fn2=1 TO cols
+          seak:=(fn2-1)*cols+fn1
+          SEEK #path,seak*SIZE(tcell) \ GET #path,tcell
+          PRINT tcell.celldat; " "; 
+        NEXT fn2
+        PRINT 
+      NEXT fn1
+      CLOSE #path
+      PAUSE 
+      END 

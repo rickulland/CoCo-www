@@ -1,0 +1,25 @@
+PROCEDURE tdump
+      (* 8/18/23 table file debug - restart 2/1/24
+      
+      TYPE table=celldat:STRING[160]; meta1,meta2:INTEGER
+      DIM tcell:table
+      DIM path,reclen:BYTE
+      DIM cols,rows,fn1,fn2:INTEGER
+      rectot:=0
+      RUN gfx2("clear")
+      OPEN #path,"/dd/SYS/tabledat.www":READ
+      SEEK #path,0 \ GET #path,tcell
+      cols:=tcell.meta1 \rows:=tcell.meta2
+      FOR fn1:=1 TO rows
+        FOR fn2:=1 TO cols
+          seak:=(fn1-1)*cols+fn2
+          SEEK #path,seak*SIZE(tcell) \ GET #path,tcell
+          PRINT "*** rec "; seak; " col:"; fn2; " row:"; fn1; " ***"
+          PRINT tcell.celldat; " --- "; tcell.meta1; " --- "; tcell.meta2; "    "
+          INPUT a$
+        NEXT fn2
+        PRINT "<EOL>"
+      NEXT fn1
+      PRINT "*****EOF*****"
+      CLOSE #path
+      END 

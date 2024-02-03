@@ -2,6 +2,7 @@ PROCEDURE ifup
      (* ifup 1.0 - 5/1/23 
      (* establish a network connection using Frobio's f.config or f.dhcp
      (* use: ifup eth0 ***FIXME add name param ethx***
+     (* ***FIXME*** check if already up
      (* configure: using 2 linux style conf files:
      (* 
      (* /dd/sys/interfaces formatted in 1 of 2 styles

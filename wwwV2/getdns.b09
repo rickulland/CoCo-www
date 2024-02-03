@@ -1,40 +1,40 @@
 PROCEDURE getdns
-     (* www util - get host address 5/15/23 
-     (* prefilter for /dd/CMDS/host (qv)
-     (* greps file  /SYS/hosts, if hostname not found
-     (* run 'host' to obtain & cache address
-     
-     DIM cnt,lvl,path:INTEGER
-     DIM instr:STRING[144]
-     PARAM hostname:STRING[144]
-     PARAM hostaddr(4):INTEGER
-     lvl:=0
-     
-     ON ERROR GOTO 10
-     SHELL "del /dd/SYS/tempdns.txt"
-10   ON ERROR 
-     OPEN #path,"/DD/SYS/hosts":READ
-     WHILE EOF(#path)<>TRUE DO 
-       READ #path,instr
-       IF LEN(instr)>1 THEN  \(* blank line=cache boundary
-         lvl:=lvl+1
-       ENDIF 
-       IF SUBSTR(hostname,instr)<>0 THEN 
-         lvl:=lvl+3
-         FOR cnt=1 TO 4
-           loc:=SUBSTR(".",instr)
-           hostaddr(cnt):=VAL(MID$(instr,1,loc-1))
-           instr:=RIGHT$(instr,LEN(instr)-loc)
-         NEXT cnt
-       ENDIF 
-     ENDWHILE 
-     CLOSE #path
-     IF lvl<2 THEN 
-       SHELL "host "+hostname
-     ELSE 
-       IF lvl=2 THEN 
-         PRINT "hostname not found pass2."
-         PAUSE 
-       ENDIF 
-     ENDIF 
-     END 
+      (* www util - get host address 5/15/23 - restart 2/1/24
+      (* prefilter for /dd/CMDS/host (qv)
+      (* greps file  /SYS/hosts, if hostname not found
+      (* run 'host' to obtain & cache address
+      
+      DIM cnt,lvl,path:INTEGER
+      DIM instr:STRING[144]
+      PARAM hostname:STRING[144]
+      PARAM hostaddr(4):INTEGER
+      lvl:=0
+      
+      ON ERROR GOTO 10
+      SHELL "del /dd/SYS/tempdns.txt"
+ 10   ON ERROR 
+      OPEN #path,"/DD/SYS/hosts":READ
+      WHILE EOF(#path)<>TRUE DO 
+        READ #path,instr
+        IF LEN(instr)>1 THEN  \(* blank line=cache boundary
+          lvl:=lvl+1
+        ENDIF 
+        IF SUBSTR(hostname,instr)<>0 THEN 
+          lvl:=lvl+3
+          FOR cnt=1 TO 4
+            loc:=SUBSTR(".",instr)
+            hostaddr(cnt):=VAL(MID$(instr,1,loc-1))
+            instr:=RIGHT$(instr,LEN(instr)-loc)
+          NEXT cnt
+        ENDIF 
+      ENDWHILE 
+      CLOSE #path
+      IF lvl<2 THEN 
+        SHELL "host "+hostname
+      ELSE 
+        IF lvl=2 THEN 
+          PRINT "hostname not found pass2."
+          PAUSE 
+        ENDIF 
+      ENDIF 
+      END 
