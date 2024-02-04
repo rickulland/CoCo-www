@@ -18,7 +18,7 @@ Not really, but if the chip is configured it prints the basic IPv4 config data i
 Uses /dd/SYS/interfaces, only 1 interface for now. It supports the Linux trick of setting a full static interface in the file, then change the one word 'static' to 'dhcp' when traveling.  
 
 
-With these prereqs set up, you can run the code described below, all loaded into one B09 workspace. This dividing line will change as code is proven, packed, and stashed in a module to be inserted above. 
+With these prereqs set up, you can run the code described below, all loaded into one B09 workspace. This dividing line will change as code is proven, packed, and stashed in a module to be inserted above. For now, I'd save all of these ( save* dome.b09 ) for one step loading.
 
 
 <b>www</b>
