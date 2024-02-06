@@ -1,5 +1,5 @@
 PROCEDURE www
-      (* Worst Web Wrangler 2/3/24
+      (* Worst Web Wrangler 2/5/24
       (* assuming 2k  TX  & RX buffer
       (* Requires 'frobio' https://github.com/strickyak/frobio/
       (* also the packed procedures host, ifup, ifconfig
@@ -26,7 +26,7 @@ PROCEDURE www
       DIM linein,workstr:STRING[144]
       (* _____ setup 
       debug:=FALSE
-      scrnx:=80 \scrny:=22 \scrnf:=106 \(* FIXME should be selectable
+      scrnx:=80 \scrny:=23 \scrnf:=106 \(* FIXME should be selectable
       soc1:=$05 \soc2:=$07 \(* FIXME should be selectable
       (* _____ end setup 
       MId_Book:=33 \MId_Page:=34
@@ -128,7 +128,7 @@ PROCEDURE www
  301  POKE $FF69,soc1 \ POKE $FF6A,$01 \ POKE $FF6B,$08
       LOOP 
         POKE $FF69,soc1 \ POKE $FF6A,$03
-        (* DB 1008 often fails to 0?  ***FIXME***
+        (* DB 1008 sometimes fails to 0?  ***FIXME***
         (* int1:=PEEK($FF6B)
         int1=$18
       EXITIF int1=$18 THEN 
@@ -263,6 +263,9 @@ PROCEDURE www
                 RUN syscall($8D,regs)
                 IF LAND(regs.cc,1)=0 THEN 
                   RUN INKEY(hotkey)
+                  IF hotkey=CHR$(13) THEN 
+                    menu_item:=0 \LpExitFlg:=TRUE
+                  ENDIF 
                   IF hotkey<>"" AND ASC(hotkey)>128 THEN 
                     hotkey=CHR$(ASC(hotkey)-128)
                     menu_id:=0 \menu_item:=0
@@ -291,8 +294,7 @@ PROCEDURE www
             
             IF menu_id=MId_Book OR SUBSTR(instr,"bghl")>0 THEN 
               IF menu_item=1 OR hotkey="b" THEN 
-                RUN doBookmark("bookmark.www",-1,bookmark) \ GOTO
-                 1290
+                RUN doBookmark("bookmark.www",-1,bookmark) \ GOTO 1290
               ENDIF 
               IF menu_item=2 OR hotkey="g" THEN 
                 GOSUB 300
@@ -338,8 +340,11 @@ PROCEDURE www
               PRINT "Scroll Left not implimented" \ RETURN 
             ENDIF 
             IF hotkey=CHR$(13) THEN 
-              RETURN 
-            ENDIF  \(* more text FIXME 
+              RUN gfx2("curxy",0,1)
+              RUN gfx2("clear")
+              lines:=1
+              GOTO 1290
+            ENDIF 
             IF menu_id=2 OR hotkey="q" THEN 
               GOSUB 300 \ GOTO 5000
             ENDIF 
@@ -397,25 +402,25 @@ PROCEDURE www
         ENDIF 
       ENDIF 
       IF LEFT$(tagtx,2)="<h" OR LEFT$(tagtx,2)="<H" THEN 
-        GOSUB 1310
+        GOSUB 1310 \ PRINT 
         IF RIGHT$(tagtx,2)="1>" THEN 
-          PRINT  \RUN gfx2("revon")
-        ENDIF 
-        IF RIGHT$(tagtx,2)="2>" THEN 
-          PRINT  \RUN gfx2("boldsw","OFF")
-        ENDIF 
-        IF RIGHT$(tagtx,2)="3>" THEN 
-          PRINT  \RUN gfx2("font",200,2)
           RUN gfx2("revon")
         ENDIF 
+        IF RIGHT$(tagtx,2)="2>" THEN 
+          RUN gfx2("boldsw","OFF")
+        ENDIF 
+        IF RIGHT$(tagtx,2)="3>" THEN 
+          RUN gfx2("font",200,2)
+        ENDIF 
         IF RIGHT$(tagtx,2)="4>" THEN 
-          PRINT  \RUN gfx2("font",200,2)
+          RUN gfx2("font",200,2)
+          RUN gfx2("revon")
         ENDIF 
         IF RIGHT$(tagtx,2)="5>" THEN 
-          PRINT  \RUN gfx2("font",200,2) \RUN gfx2("boldsw","ON")
+          RUN gfx2("font",200,2) \RUN gfx2("boldsw","ON")
         ENDIF 
         IF RIGHT$(tagtx,2)="6>" THEN 
-          PRINT  \RUN gfx2("font",200,2)
+          RUN gfx2("font",200,2)
         ENDIF 
       ENDIF 
       
@@ -428,17 +433,18 @@ PROCEDURE www
           RUN gfx2("boldsw","OFF")
         ENDIF 
         IF RIGHT$(tagtx,2)="3>" THEN 
-          RUN gfx2("font",200,1) \RUN gfx2("revoff")
+          RUN gfx2("font",200,50) \RUN gfx2("revoff")
         ENDIF 
         IF RIGHT$(tagtx,2)="4>" THEN 
-          RUN gfx2("font",200,1)
+          RUN gfx2("font",200,50)
         ENDIF 
         IF RIGHT$(tagtx,2)="5>" THEN 
-          RUN gfx2("font",200,1) \RUN gfx2("boldsw","OFF")
+          RUN gfx2("font",200,50) \RUN gfx2("boldsw","OFF")
         ENDIF 
         IF RIGHT$(tagtx,2)="6>" THEN 
-          RUN gfx2("font",200,1)
+          RUN gfx2("font",200,50)
         ENDIF 
+        GOSUB 1320
       ENDIF 
       IF LEFT$(tagtx,6)="<table" THEN 
         filename:="table_"+CHR$(tblno)+".www"
