@@ -1,105 +1,182 @@
 PROCEDURE host
-     (* host 0.5 - 5/5/23  cb 6/14/23
-     (* use:   host host.domain.tld
-     (* config:   /dd/SYS/hosts
-     (* line1 is the machines hostname, the first 4 characters need to be unique for dhcp
-     (* the remainder are ip address/hostname pairs. These override dns returns. 
-     (* Use a leading # to disable a line:
-     (* 
-     (* 127.0.0.1   rickslaptop.computerconect.com rickslaptop 
-     (* 192.168.1.7  rickslaptop.org
-     (* 192.168.0.7  anotherhost.com
-     (* #123.32.3.1  thisline.commented.out
-     (* 
-     (* host returns the first match, else calls f.dig recursively to get address
-     (* new matches. Appended to /dd/SYS/hosts under original hostname, not CNAME
-     
-     DIM cnt,loca,path:INTEGER
-     DIM debug,match:BOOLEAN
-     DIM instr,midstr,outstr:STRING[255]
-     DIM namesrv:STRING[16]
-     PARAM hostname:STRING[144]
-     PARAM hostaddr(4):INTEGER
-     debug:=FALSE
-     namesrv:="8.8.8.8"
-     
-10   ON ERROR GOTO 100 \(* check for a presearch file else 100
-     OPEN #path,"/DD/SYS/tempdns.txt":READ
-     WHILE EOF(#path)<>TRUE DO 
-       READ #path,instr \loca:=SUBSTR(" CNAME ",instr)
-       IF loca>0 THEN 
-         midstr:=MID$(instr,loca+7,LEN(instr)-loca)
-         loca:=SUBSTR(CHR$(10),midstr) \outstr:=LEFT$(midstr,loca-2)
-         CLOSE #path \GOTO 200
-       ENDIF 
-     ENDWHILE 
-     CLOSE #path
-     
-     OPEN #path,"/DD/SYS/tempdns.txt":READ
-     WHILE EOF(#path)<>TRUE DO 
-       READ #path,instr \loca:=SUBSTR("  IN  A ",instr)
-       IF loca>0 THEN 
-         midstr:=MID$(instr,loca+8,15) \loca:=SUBSTR(CHR$(10),midstr)
-         IF loca<>0 THEN 
-           instr:=LEFT$(midstr,loca-1)
-         ENDIF 
-         GOSUB 300
-         IF debug=FALSE THEN 
-           OPEN #path,"/DD/SYS/hosts":UPDATE \(* add to hosts file
-           WHILE EOF(#path)<>TRUE DO 
-             READ #path,instr
-             IF SUBSTR(hostname,instr)>0 THEN 
-               CLOSE #path \END 
-             ENDIF 
-           ENDWHILE 
-           FOR cnt=1 TO 4
-             PRINT #path,hostaddr(cnt); 
-             IF cnt<4 THEN  \PRINT #path; ".";  \ENDIF 
-           NEXT cnt
-           PRINT #path,"   "; hostname \CLOSE #path
-         ELSE 
-           PRINT "Would have written to hosts:"
-           FOR cnt=1 TO 4
-             PRINT hostaddr(cnt); \IF cnt<4 THEN  \PRINT ".";  \ENDIF 
-           NEXT cnt
-           PRINT "   "; hostname
-         ENDIF 
-         CLOSE #path \END 
-       ENDIF 
-     ENDWHILE 
-     CLOSE #path
-     
-100  ON ERROR 
-     OPEN #path,"/DD/SYS/hosts":READ
-     WHILE EOF(#path)<>TRUE DO 
-       READ #path,instr
-       IF LEFT$(instr,1)<>"#" THEN 
-         IF SUBSTR(hostname,instr)<>0 THEN 
-           IF debug=TRUE THEN \PRINT "instr "; instr \ENDIF 
-           GOSUB 300 \(* string to 4 bytes, exit
-           CLOSE #path \END 
-         ENDIF 
-       ENDIF 
-     ENDWHILE 
-     outstr:=hostname \(* fallthru 200
-     CLOSE #path
-     
-200  (* f.dig into a temp file, rerun
-     IF debug=TRUE THEN 
-       PRINT "Calling f.dig with hostname: "; outstr
-     ENDIF 
-     ON ERROR GOTO 205 \SHELL "del /dd/SYS/tempdns.txt"
-205  SHELL "f.dig -a "+namesrv+" "+outstr+" > /dd/SYS/tempdns.txt"
-     IF debug=TRUE THEN \SHELL "cat /dd/SYS/tempdns.txt" \ENDIF 
-     ON ERROR 
-     GOTO 10
-     
-300  instr:=instr+"."
-     FOR cnt=1 TO 4
-       loc:=SUBSTR(".",instr)
-       hostaddr(cnt):=VAL(MID$(instr,1,loc-1))
-       instr:=RIGHT$(instr,LEN(instr)-loc)
-     NEXT cnt
-     RETURN 
-     
-     
+      (* host 1.1 - 3/14/24
+      (* use:   host hostname.domain.tld  or   host hostname
+      (* config:   /dd/SYS/hosts, /dd/SYS/resolv.conf
+      
+      DIM debug,dhcp,match,rotate:BOOLEAN
+      DIM attempts,timeout,fn1,int1,int2,path,path2:INTEGER
+      DIM cnt,loca,ndots,ns,hostaddr(4):INTEGER
+      DIM namesrv(3):STRING[80]
+      DIM instr,midstr,search:STRING[255]
+      DIM cname,orghost:STRING[144]
+      PARAM hostname:STRING[144]
+
+      ndots:=1 \attempts:=1 \timeout:=5 \dhcp:=FALSE \rotate:=FALSE
+      orghost:=hostname
+      debug:=TRUE
+      
+ 10   ON ERROR GOTO 100 \(* check for a presearch file else 100
+      OPEN #path,"/DD/SYS/dns.tmp":READ
+      WHILE EOF(#path)<>TRUE DO 
+        READ #path,instr \loca:=SUBSTR(" CNAME ",instr)
+        IF loca>0 THEN 
+          midstr:=MID$(instr,loca+7,LEN(instr)-loca)
+          loca:=SUBSTR(CHR$(10),midstr) \hostname:=LEFT$(midstr,loca-2)
+          CLOSE #path \ GOTO 210 \(* run dig against cname
+        ENDIF 
+      ENDWHILE 
+      CLOSE #path
+      
+      OPEN #path,"/DD/SYS/dns.tmp":READ \(* not a CNAME
+      WHILE EOF(#path)<>TRUE DO 
+        READ #path,instr \loca:=SUBSTR("  IN  A ",instr)
+        IF loca>0 THEN 
+          midstr:=MID$(instr,loca+8,15) \loca:=SUBSTR(CHR$(10),midstr)
+          IF loca<>0 THEN 
+            instr:=LEFT$(midstr,loca-1)
+          ENDIF 
+          GOSUB 400
+          IF debug=FALSE THEN 
+            OPEN #path,"/DD/SYS/hosts":UPDATE \(* add to hosts file
+            hostname:=orghost
+            WHILE EOF(#path)<>TRUE DO 
+              READ #path,instr
+              IF SUBSTR(hostname,instr)>0 THEN
+                (* host already exists, exit
+                CLOSE #path \ END 
+              ENDIF 
+            ENDWHILE \(* write data line at end
+            FOR cnt=1 TO 4
+              PRINT #path,hostaddr(cnt); 
+              IF cnt<4 THEN  \ PRINT #path; ".";  \ ENDIF 
+            NEXT cnt
+            PRINT #path,"   "; hostname \ CLOSE #path
+          ELSE 
+            PRINT "Would have written to hosts:"
+            FOR cnt=1 TO 4
+              PRINT hostaddr(cnt);  
+              IF cnt<4 THEN  \ PRINT "."; \ ENDIF 
+            NEXT cnt
+            PRINT "   "; hostname
+          ENDIF 
+          CLOSE #path \ END 
+        ENDIF 
+      ENDWHILE 
+      CLOSE #path 
+      PRINT "ABEND:didn't find or write host."
+      PAUSE
+      END
+      
+ 100  ON ERROR 
+      OPEN #path,"/DD/SYS/hosts":READ
+      WHILE EOF(#path)<>TRUE DO 
+        READ #path,instr
+        IF LEFT$(instr,1)<>";" AND LEFT$(instr,2)<>"(*" THEN 
+          IF SUBSTR(hostname,instr)<>0 THEN 
+            PRINT instr
+            GOSUB 400 \(* string to 4 bytes
+            CLOSE #path
+            END \(* return hostname, addr
+          ENDIF 
+        ENDIF 
+      ENDWHILE 
+      cname:=hostname \(* fallthru 200
+      CLOSE #path
+      
+ 200  (* parse /dd/SYS/resolv.conf 
+      ns:=0
+      OPEN #path,"/dd/SYS/resolv.conf":READ
+      WHILE EOF(#path)<>TRUE DO 
+        READ #path,instr
+        GOSUB 300
+        IF SUBSTR("nameserver",instr)>0 THEN 
+          ns:=ns+1
+          IF LEFT$(instr,1)<>";" AND LEFT$(instr,2)<>"(*" THEN 
+            IF ns<4 THEN 
+              namesrv(ns):=RIGHT$(instr,LEN(instr)-SUBSTR(" ",instr))
+            ENDIF 
+          ENDIF 
+        ENDIF 
+      ENDWHILE 
+      CLOSE #path
+      OPEN #path,"/DD/SYS/resolv.conf":READ \(* pass2 - get options
+      WHILE EOF(#path)<>TRUE DO 
+        READ #path,instr
+        GOSUB 300
+        IF SUBSTR("from dhcp",instr)>0 THEN  \dhcp:=TRUE \ ENDIF 
+        IF LEFT$(instr,1)<>";" AND LEFT$(instr,2)<>"(*" THEN 
+          IF SUBSTR("search",instr)>0 THEN 
+            search:=RIGHT$(instr,LEN(instr)-SUBSTR(" ",instr))
+          ENDIF 
+          IF SUBSTR("rotate",instr)>0 THEN 
+            rotate:=TRUE
+          ELSE 
+            IF SUBSTR("options",instr)>0 THEN 
+              instr:=RIGHT$(instr,LEN(instr)-SUBSTR(" ",instr)) \(* skip to next space
+              instr:=RIGHT$(instr,LEN(instr)-SUBSTR(":",instr)) \(* split at : 
+              int1:=VAL(instr)
+              IF SUBSTR("ndots",instr)>0 THEN  \ndots:=int1 \ ENDIF
+              IF SUBSTR("attempts",instr)>0 THEN  \attempts:=int1 \ ENDIF 
+              IF SUBSTR("timeout",instr)>0 THEN  \timeout:=int1 \ ENDIF 
+            ENDIF 
+          ENDIF 
+        ENDIF 
+      ENDWHILE 
+      CLOSE #path
+      
+ 210  (* call f.dig 
+      ON ERROR GOTO 215
+      SHELL "del /dd/SYS/dns.tmp"
+ 215  ON ERROR 
+      LOOP  \(* outer loop, check nameserver)
+        int2:=0
+        FOR fn1=1 TO LEN(hostname)
+          IF MID$(hostname,fn1,1)="." THEN  \int2:=int2+1 \ ENDIF
+        NEXT fn1
+        IF int2<ndots THEN  \hostname:=hostname+"."+search \ ENDIF
+        int1:=1 \(* pick starting namesever
+        IF rotate=TRUE AND dhcp=FALSE THEN 
+          int1:=RND(3)
+        ENDIF 
+218     FOR fn1=1 TO 3
+          IF LEN(namesrv(fn1))>0 THEN 
+            ON ERROR GOTO 220
+            SHELL "del /dd/SYS/dns.tmp"
+220         (* FOR fn2=1 TO attempts
+            IF debug=TRUE THEN 
+              PRINT "f.dig -a "+namesrv(int1)+" "+hostname+" > /dd/SYS/dns.tmp"
+              GOSUB 1005
+            ENDIF 
+            SHELL "f.dig -a "+namesrv(int1)+" "+hostname+" > /dd/SYS/dns.tmp"
+            ON ERROR GOTO 215
+            OPEN #path,"/dd/SYS/dns.tmp"
+            PRINT "got dns.tmp"
+            GOSUB 1005
+            CLOSE #path
+            GOTO 10
+            (* NEXT fn2
+          ENDIF 
+          IF int1>3 THEN \ int1:1 \ ENDIF
+        NEXT fn1
+      ENDLOOP 
+      PRINT "ABEND: no nameservers found."
+      GOSUB 1005
+      END 
+      
+ 300  (* readln, strip leading whitespace
+      WHILE LEFT$(instr,1)=" " DO 
+        instr:=RIGHT$(instr,LEN(instr)-1)
+      ENDWHILE 
+      RETURN 
+      
+ 400  instr:=instr+"."
+      FOR cnt=1 TO 4
+        loc:=SUBSTR(".",instr)
+        hostaddr(cnt):=VAL(MID$(instr,1,loc-1))
+        instr:=RIGHT$(instr,LEN(instr)-loc)
+      NEXT cnt
+      RETURN 
+      
+      
+ 1005 PRINT  \ INPUT "Any key to continue.",a$
+      RETURN 

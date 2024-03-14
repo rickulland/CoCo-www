@@ -1,89 +1,178 @@
 PROCEDURE ifup
-     (* ifup 1.0 - 5/1/23 
-     (* establish a network connection using Frobio's f.config or f.dhcp
-     (* use: ifup eth0 ***FIXME add name param ethx***
-     (* ***FIXME*** check if already up
-     (* configure: using 2 linux style conf files:
-     (* 
-     (* /dd/sys/interfaces formatted in 1 of 2 styles
-     (* (Or, change the word 'static' to 'dhcp' to park a config)
-     (* 
-     (* iface eth0 inet dhcp
-     (* phyaddr $FF6B
-     (* 
-     (* iface eth0 inet static
-     (* address 192.168.0.7
-     (* gateway 192.168.0.1
-     (* netmask 255.255.255.0
-     (* macaddr 5C:26:0A:01:02:03
-     (* phyaddr $FF6B
-     (* 
-     (* /dd/SYS/hosts is mainly a dns cache, except first line
-     (* should be '127.0.0.1' plus hostname of CoCo.
-     (* The 1st 4 chars of the hostname will be used in the dhcp mac
-     (* 127.0.0.1   rickscoco.computerconect.com
-     (* ...
+      (* ifup 1.2 - 3/13/24 establish network connections 
+      (* uses Axiom's f.config or f.dhcp
+      (* use: ifup (   ,ethX, -a)
+      (* config: /dd/sys/interfaces, /dd/SYS/hosts 
+      
+      DIM debug,dhcp,inwork:BOOLEAN
+      DIM int1,fn1,path,path2,path3,inum:INTEGER
+      DIM iname,ipaddr,gate,net,mac,phyaddr,shost:STRING
+      DIM instrg,fhost:STRING[80]
+      DIM instr,dns:STRING[160]
+      PARAM intface:STRING
+      
+      debug:=FALSE \inwork:=FALSE \inum:=0
+      
+      OPEN #path,"/DD/SYS/interfaces":READ
+      WHILE EOF(#path)<>TRUE DO 
+        GOSUB 200
+ 10     IF LEFT$(instr,6)="iface " THEN 
+          IF inwork=FALSE THEN 
+            GOSUB 100 \(* get shorthost
+            inwork:=TRUE
+          ELSE 
+            GOSUB 1000 \(* doConfig 
+            GOSUB 100
+          ENDIF 
+          GOSUB 200
+        ENDIF 
+        IF inwork=TRUE THEN 
+          IF LEFT$(instr,8)="address " THEN 
+            ipaddr:=RIGHT$(instr,LEN(instr)-8)
+          ENDIF 
+          IF LEFT$(instr,8)="gateway " THEN 
+            gate:=RIGHT$(instr,LEN(instr)-8)
+          ENDIF 
+          IF LEFT$(instr,8)="netmask " THEN 
+            net:=RIGHT$(instr,LEN(instr)-8)
+          ENDIF 
+          IF LEFT$(instr,8)="macaddr " THEN 
+            mac:=RIGHT$(instr,LEN(instr)-8)
+          ENDIF 
+          IF LEFT$(instr,8)="phyaddr " THEN 
+            IF SUBSTR("FF78",instr)>0 THEN 
+              phyaddr:="-wFF78"
+            ELSE 
+              phyaddr:="-wFF68"
+            ENDIF 
+          ENDIF 
+        ENDIF 
+      ENDWHILE 
+      CLOSE #path
+      GOSUB 1000
+      END 
+      
+ 100  (* Get/set interface name and short hostname
+      iname:=MID$(instr,7,4) \inum:=inum+1
+      IF SUBSTR("dhcp",instr)>0 THEN 
+        dhcp:=TRUE
+      ELSE 
+        dhcp:=FALSE
+      ENDIF 
+      shost:="coco" \(***FIXME*** get default from ROM RSN
+      OPEN #path3,"/DD/SYS/hosts":READ
+      WHILE EOF(#path3)<>TRUE DO 
+        READ #path3,instrg
+        IF LEFT$(instrg,8)="127.0.0." THEN 
+          IF VAL(MID$(instrg,9,1))=inum THEN 
+            instrg:=RIGHT$(instrg,LEN(instrg)-10)
+            int1:=SUBSTR(" ",instrg)
+            IF int1>0 THEN 
+              fhost:=LEFT$(instrg,int1)
+            ELSE 
+              fhost:=instrg
+            ENDIF 
+            shost:=LEFT$(fhost,4)
+          ENDIF 
+        ENDIF 
+      ENDWHILE 
+      CLOSE #path3
+      iname:=MID$(instr,7,4) \inwork:=TRUE \inum:=inum+1
+      IF SUBSTR("dhcp",instr)>0 THEN 
+        dhcp:=TRUE
+      ELSE 
+        dhcp:=FALSE
+      ENDIF 
+      RETURN 
+      
+ 200  (* readln, strip leading shitespace
+      READ #path,instr \instr:=instr+"."
+      WHILE LEFT$(instr,1)=" " DO 
+        instr:=RIGHT$(instr,LEN(instr)-1)
+      ENDWHILE 
+      RETURN 
+      
+ 1000 (* configure interface
+      (* second interface on hold, set addr crashes coco!
+      IF phyaddr="-wFF78" THEN 
+        PRINT "DEBUG: iface "; iname; " at phyaddr FF78 disabled (crashes CoCo)"
+        PRINT "Any key to skip this interface"
+        INPUT a$
+        RETURN 
+      ENDIF 
+      IF dhcp=FALSE THEN 
+        IF debug=TRUE THEN 
+          PRINT "DEBUG: f.config "; phyaddr; " "; ipaddr; " "; net; " "; gate
+        ELSE 
+          (* SHELL "f.config "+phyaddr+" "+ipaddr+" "+net+" "+gate
+          SHELL "f.config "+ipaddr+" "+net+" "+gate
+        ENDIF 
+      ELSE 
+        IF debug=TRUE THEN 
+          PRINT "DEBUG: f.dhcp "; phyaddr; " "; shost; 
+          GOSUB 1005
+        ENDIF 
+      ENDIF 
+      ON ERROR GOTO 1001
+      SHELL "del /dd/SYS/dhcp.tmp"
+ 1001 ON ERROR 
+      (* SHELL "f.dhcp "+phyaddr+" "+shost+" > /dd/SYS/dhcp.tmp" ***FIXME***
+      SHELL "f.dhcp "+shost+" > /dd/SYS/dhcp.tmp"
+      dns:="" \instr:=""
+      OPEN #path,"/dd/SYS/dhcp.tmp":UPDATE
+      READ #path,instr
+      WRITE #path,CHR$(13)
+      CLOSE #path
+      OPEN #path,"/DD/SYS/dhcp.tmp":READ
+      WHILE EOF(#path)<>TRUE DO 
+        READ #path,instr
+        int1:=SUBSTR("dns=",instr)
+        IF int1>0 THEN 
+          dns:=TRIM$(RIGHT$(instr,LEN(instr)-int1-3))
+        ENDIF 
+      ENDWHILE 
+      CLOSE #path
+      (* rewrite resolv.conf, replace or delete old dhcp entry 
+      ON ERROR GOTO 1002
+      SHELL "del /dd/SYS/resolv.tmp"
+ 1002 ON ERROR 
+      SHELL "rename /dd/SYS/resolv.conf resolv.tmp"
+      OPEN #path,"/dd/SYS/resolv.tmp":READ
+      CREATE #path2,"/dd/SYS/resolv.conf":WRITE
+      WHILE EOF(#path)<>TRUE DO 
+        READ #path,instr
+        IF SUBSTR("; temporary",instr)=0 THEN 
+          WRITE #path2,instr
+        ELSE 
+          READ #path,instr
+          IF dhcp=TRUE THEN  \(* write the new assignment
+            IF SUBSTR("nameserver",instr)<>0 THEN 
+              IF LEN(dns)>1 THEN 
+                IF debug=TRUE THEN 
+                  PRINT "writing dhcp nameserver: "; dns
+                  GOSUB 1005
+                ENDIF 
+                dns:=LEFT$(dns,LEN(dns)-1)
+                WRITE #path2,"; temporary, from dhcp"
+                WRITE #path2,"nameserver "+dns
+              ENDIF 
+            ENDIF 
+          ENDIF  \(* dropping old nameserver assignment on floor
+        ENDIF 
+      ENDWHILE 
+      CLOSE #path \ CLOSE #path2
+      
+      IF debug=TRUE THEN 
+        PRINT "DEBUG: starting "; 
+        PRINT "iface: "; iname; " at "; phyaddr
+        PRINT "   IP addr",ipaddr
+        PRINT "   netmask",net
+        PRINT "   gateway",gate
+        PRINT "   macaddr",mac
+        PRINT "hostname: "; fhost; " "; shost
+        GOSUB 1005
+      ENDIF 
+      RETURN 
 
-     
-     DIM debug,dhcp:BOOLEAN
-     DIM fna,loc,int1,path:INTEGER
-     DIM addrs,gate,net,mac,instr,outstr:STRING[80]
-     DIM phyaddr:STRING[5] \(* should be a PARAM soon
-     debug:=TRUE
-     
-     OPEN #path,"/DD/SYS/interfaces":READ
-     WHILE EOF(#path)<>TRUE DO 
-       READ #path,instr \instr:=instr+"."
-       IF LEFT$(instr,6)="iface " THEN 
-         IF SUBSTR("dhcp",instr)>0 THEN 500
-       ENDIF 
-       IF LEFT$(instr,8)="address " THEN 
-         addrs:=RIGHT$(instr,LEN(instr)-8)
-       ENDIF 
-       IF LEFT$(instr,8)="gateway " THEN 
-         gate:=RIGHT$(instr,LEN(instr)-8)
-       ENDIF 
-       IF LEFT$(instr,8)="netmask " THEN 
-         net:=RIGHT$(instr,LEN(instr)-8)
-       ENDIF 
-       IF LEFT$(instr,8)="macaddr " THEN 
-         mac:=RIGHT$(instr,LEN(instr)-8)
-       ENDIF 
-       IF LEFT$(instr,8)="phyaddr " THEN 
-         IF SUBSTR("FF78",instr)>0 THEN 
-           phyaddr:="-wFF78"
-         ELSE 
-           phyaddr:="-wFF68"
-         ENDIF 
-       ENDIF 
-     ENDWHILE 
-     CLOSE #path
-     IF debug=TRUE THEN 
-       PRINT "From interfaces: "
-       PRINT "address",addrs
-       PRINT "netmask",net
-       PRINT "gateway",gate
-       PRINT "macaddr",mac; " (not used)"
-     ENDIF 
-     SHELL "f.config "+addrs+" "+net+" "+gate
-     END 
-500  (* dhcp, using hostname from /dd/sys/hosts, else 'coco'
-     outstr:="coco"
-     OPEN #path,"/DD/SYS/hosts":READ
-     WHILE EOF(#path)<>TRUE DO 
-       READ #path,instr
-       IF LEFT$(instr,10)="127.0.0.1 " THEN 
-         instr:=RIGHT$(instr,LEN(instr)-10)
-         int1:=SUBSTR(" ",instr)
-         IF int1>0 THEN 
-           instr:=RIGHT$(instr,LEN(instr)-int1)
-           outstr:=LEFT$(instr,MOD(int1,4))
-         ENDIF 
-       ENDIF 
-     ENDWHILE 
-     CLOSE #path
-     IF debug=TRUE THEN 
-       PRINT "Calling f.dhcp with hostname: "; outstr
-     ENDIF 
-     SHELL "f.dhcp "+outstr
-     END 
+ 1005 PRINT  \ INPUT "Any key to continue.",a$
+      RETURN 
