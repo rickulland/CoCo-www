@@ -5,11 +5,12 @@ PROCEDURE host
       
       DIM debug,dhcp,match,rotate:BOOLEAN
       DIM attempts,timeout,fn1,int1,int2,path,path2:INTEGER
-      DIM cnt,loca,ndots,ns,hostaddr(4):INTEGER
+      DIM cnt,loca,ndots,ns:INTEGER
       DIM namesrv(3):STRING[80]
       DIM instr,midstr,search:STRING[255]
       DIM cname,orghost:STRING[144]
       PARAM hostname:STRING[144]
+      PARAM hostaddr(4):INTEGER
 
       ndots:=1 \attempts:=1 \timeout:=5 \dhcp:=FALSE \rotate:=FALSE
       orghost:=hostname
