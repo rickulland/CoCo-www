@@ -20,20 +20,20 @@ Uses /dd/SYS/interfaces, only 1 interface for now. It supports the Linux trick o
 
 <b>/dd/SYS/interfaces</b> is just that, a list of interfaces for ifup to bring up. Each one must have a name in the range eth0-eth9. There can be 2(RSN) CoCoIO using encapsulation 'inet' but other interfaces will be supported where we can. Finally, 'static' or 'dhcp'. If dhcp, the subsequent address data is ignored, just free parking until static is turned back on. At this time macaddr is just a placeholder for the unhandled issue of CCIO with no EEPROM. Finally, phyaddr will enable multiple card/IP/hostname on one CoCo soon.
 
-iface eth0 inet static
-    address 10.2.2.123
-    gateway 10.2.2.1
-    netmask 255.255.255.0
-    macaddr 5C:26:0A:01:02:03
-    phyaddr $FF68
-
-iface eth1 inet static
-    address 192.168.1.7
-    gateway 192.168.1.1
-    netmask 255.255.255.0
-    macaddr 5C:26:0A:C0:C0:03
-    phyaddr $FF78
-
+iface eth0 inet static<br>
+    address 10.2.2.123<br>
+    gateway 10.2.2.1<br>
+    netmask 255.255.255.0<br>
+    macaddr 5C:26:0A:01:02:03<br>
+    phyaddr $FF68<br>
+<br>
+iface eth1 inet static<br>
+    address 192.168.1.7<br>
+    gateway 192.168.1.1<br>
+    netmask 255.255.255.0<br>
+    macaddr 5C:26:0A:C0:C0:03<br>
+    phyaddr $FF78<br>
+<br>
  <b>/dd/SYS/hosts</b> stores basic network information. First we self identify, 127.xxx provides a hostname for each interface in list order. (Note f.dhcp only uses left 4 chars of a hostname).  Then a trusted list of IP/hostname pairs. These are used in place of dns calls. Below the comment lies our live dns cache. When a hostname must be looked up, the result is saved here and used until it stops working. Then it's erased, we look up the name again and add to the bottom.
 
    127.0.0.1   coco.conect.lan
@@ -47,7 +47,7 @@ iface eth1 inet static
 
 
 /dd/SYS/resolv.conf normally lists up to 3 nameservers. If the first one fails to find a name the next ones have a go in turn.  'search' is a string added to any short hostname, so 'coco' becomes 'coco.conect.lan' for name searching purposes. We've overloaded this to store an extra dhcp provided nameserver if we are given one. The comment and nameserver pair will be removed or reset next network startup (any style, dhcp or static). 
-One option suppoerted, ndots specs how many dots to avoid adding 'search'. Rotate and attempts are in there, but leaving next rev. 
+One option is supported, ndots specs how many dots to avoid adding 'search'. Rotate and attempts are in there, but leaving next rev. 
 
    search conect.lan
    ; temporary, from dhcp 
