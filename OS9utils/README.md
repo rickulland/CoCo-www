@@ -1,4 +1,4 @@
-Decided to split the OS level utilities away from the web browser. An so, here are notes on ifup, ifconfig, host and stuff like that. 
+Decided to split the OS level utilities away from the web browser. An so, here are notes on ifup, ifconfig, host and stuff like that. From the web, must view the 'raw' file for the tables to make sense. 
 
 First step, install frobio https://github.com/strickyak/frobio/.  Check out the 'built' directory! Copy to /dd/CMDS/f.dig, etc and use 'attr filename e pe' to make them all runnable. Second step, load and pack each of the basic09 programs individually, they will end up in /dd/CMDS. And finally, copy the example interfaces, hosts, and resolv.conf files to /dd/SYS and edit as described below. 
  
@@ -20,20 +20,20 @@ Uses /dd/SYS/interfaces, only 1 interface for now. It supports the Linux trick o
 
 <b>/dd/SYS/interfaces</b> is just that, a list of interfaces for ifup to bring up. Each one must have a name in the range eth0-eth9. There can be 2(RSN) CoCoIO using encapsulation 'inet' but other interfaces will be supported where we can. Finally, 'static' or 'dhcp'. If dhcp, the subsequent address data is ignored, just free parking until static is turned back on. At this time macaddr is just a placeholder for the unhandled issue of CCIO with no EEPROM. Finally, phyaddr will enable multiple card/IP/hostname on one CoCo soon.
 
-iface eth0 inet static<br>
-    address 10.2.2.123<br>
-    gateway 10.2.2.1<br>
-    netmask 255.255.255.0<br>
-    macaddr 5C:26:0A:01:02:03<br>
-    phyaddr $FF68<br>
-<br>
-iface eth1 inet static<br>
-    address 192.168.1.7<br>
-    gateway 192.168.1.1<br>
-    netmask 255.255.255.0<br>
-    macaddr 5C:26:0A:C0:C0:03<br>
-    phyaddr $FF78<br>
-<br>
+iface eth0 inet static
+    address 10.2.2.123
+    gateway 10.2.2.1
+    netmask 255.255.255.0
+    macaddr 5C:26:0A:01:02:03
+    phyaddr $FF68
+
+iface eth1 inet static
+    address 192.168.1.7
+    gateway 192.168.1.1
+    netmask 255.255.255.0
+    macaddr 5C:26:0A:C0:C0:03
+    phyaddr $FF78
+
  <b>/dd/SYS/hosts</b> stores basic network information. First we self identify, 127.xxx provides a hostname for each interface in list order. (Note f.dhcp only uses left 4 chars of a hostname).  Then a trusted list of IP/hostname pairs. These are used in place of dns calls. Below the comment lies our live dns cache. When a hostname must be looked up, the result is saved here and used until it stops working. Then it's erased, we look up the name again and add to the bottom.
 
    127.0.0.1   coco.conect.lan
