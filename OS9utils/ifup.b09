@@ -107,6 +107,7 @@ PROCEDURE ifup
           (* SHELL "f.config "+phyaddr+" "+ipaddr+" "+net+" "+gate
           SHELL "f.config "+ipaddr+" "+net+" "+gate
         ENDIF 
+        END
       ELSE 
         IF debug=TRUE THEN 
           PRINT "DEBUG: f.dhcp "; phyaddr; " "; shost; 
