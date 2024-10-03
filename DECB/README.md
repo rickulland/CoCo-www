@@ -13,7 +13,7 @@ Remote
 1250 replace decimal numbers 192 168 0 124 with IP address of a web server
 
 To read, here is a variable decoder ring. 
-
+```
 LOCAL VARS
    A,B,C,D,E,F,G,W$,X$ - TEMP RESULT
    I,J     - LOOP INDEX
@@ -30,9 +30,9 @@ GLOBAL VARS
    RM, WM   - MASKOF R,W BUFFER
    WP,RP    - R,W POINTER (from 5100)
    RZ, WZ   - R,W SIZEOF DATA
-
+```
 and a sort of outline.
-
+```
 open a local socket, connect to a remote one
      1310 POKE &HFF69,&H04 : POKE &HFF6A,&H01 : POKE &HFF6B, 1   'SN-CR=OPEN SOCKET
      1320 POKE &HFF69,&H04 : POKE &HFF6A,&H03 : S = PEEK(&HFF6B) 'SN-SR<-STATUS
@@ -40,10 +40,11 @@ open a local socket, connect to a remote one
      1340 POKE &HFF69,&H04 : POKE &HFF6A,&H01 : POKE &HFF6B, 4 'TRY CONNECT   
      1350 POKE &HFF69,&H04 : POKE &HFF6A,&H03 : C = PEEK(&HFF6B) 'GET STATUS
      ...
-
+```
+Code talkthru - 
 make a server request ---------------------------------------------------
 * this code should use the multi-segment algo in the read data routine following
-
+```
 compare data to write with xmit buffer, wait until there is space
      1540 WZ = LEN(W$)                                        'WZ = WRITE SIZE
      1550 POKE &HFF69,&H04 : POKE &HFF6A,&H20                 'SN-CR
@@ -73,9 +74,9 @@ poke each character of w$ into data port, then last used+1 to wizzy
     1870 NEXT I
     1875 SS = L+1                                            ' NEXT STRING START
     1880 POKE &HFF69,&H04 : POKE &HFF6A,&H01 : POKE &HFF6B,&H20  'SN_CR=SEND IT
-
+```
 accept server response -----------------------------------------------------
-
+```
 wait for data to read
      2520 POKE &HFF69,&H04 : POKE &HFF6A,&H26                 'SN-RX-RSR
      2530 RZ = (PEEK(&HFF6B)*256)+PEEK(&HFF6B)                'RZ=READ SIZE
@@ -116,5 +117,5 @@ poke last used address +1 to wizzy, set read done
      2652 RZ=RZ+1 : B=INT(RZ/256) : C=RZ-(256*B)              '1 PAST LAST READ       
      2654 POKE &HFF6B,B : POKE &HFF6B,C            
      2660 POKE &HFF69,&H04 : POKE &HFF6A,&H01 : POKE &HFF6B,&H40 'SN-CR=READ DONE
-
+```
 repeat send or recv as needed ---------------------------------------------
